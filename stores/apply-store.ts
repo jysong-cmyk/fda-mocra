@@ -1,3 +1,4 @@
+import { createApplySessionId } from "@/lib/apply/apply-session-header";
 import {
   RP_PRODUCT_NAME_REGEX,
   type AiRecommendation,
@@ -9,6 +10,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ApplyStore = {
+  /** 비회원 apply 브라우저 세션 — Supabase `products.session_id`·헤더와 연동 */
+  sessionId: string;
   isAgreed: boolean;
   rpNameEn: string;
   rpContact: string;
@@ -111,6 +114,7 @@ export type ApplyStore = {
 
 /** persist에 넣는 직렬화 가능한 조각(File 제외) */
 export type ApplyPersistedState = {
+  sessionId: string;
   isAgreed: boolean;
   rpNameEn: string;
   rpContact: string;
@@ -142,6 +146,35 @@ export type ApplyPersistedState = {
   commonRequiredError: Partial<Record<CommonRequiredKey, boolean>>;
   productFieldError: Partial<Record<ProductFieldKey, boolean>>;
 };
+
+function resolvePersistedSessionId(
+  p: Partial<ApplyPersistedState> | undefined,
+  fallbackSessionId: string,
+): string {
+  const raw = p?.sessionId;
+  if (typeof raw === "string" && raw.trim() !== "") {
+    return raw.trim();
+  }
+  const fb = fallbackSessionId.trim();
+  if (fb !== "") {
+    return fb;
+  }
+  return createApplySessionId();
+}
+
+function migrateCartLinesSessionId(
+  lines: CartLine[] | undefined,
+  sessionId: string,
+): CartLine[] {
+  if (lines == null || lines.length === 0) return [];
+  return lines.map((line) => ({
+    ...line,
+    sessionId:
+      typeof line.sessionId === "string" && line.sessionId.trim() !== ""
+        ? line.sessionId.trim()
+        : sessionId,
+  }));
+}
 
 const initialProductDraft = {
   productNameEn: "",
@@ -182,6 +215,7 @@ const initialCommon = {
 export const useApplyStore = create<ApplyStore>()(
   persist(
     (set) => ({
+  sessionId: createApplySessionId(),
   ...initialCommon,
   ...initialProductDraft,
   cartLines: [],
@@ -310,7 +344,7 @@ export const useApplyStore = create<ApplyStore>()(
     }),
 
   resetApplyWizard: () =>
-    set({
+    set((s) => ({
       ...initialCommon,
       ...initialProductDraft,
       cartLines: [],
@@ -318,12 +352,14 @@ export const useApplyStore = create<ApplyStore>()(
       isAddingProduct: false,
       commonRequiredError: {},
       productFieldError: {},
-    }),
+      sessionId: s.sessionId,
+    })),
 }),
     {
       name: "aicra-apply",
       storage: createJSONStorage(() => sessionStorage),
       partialize: (state): ApplyPersistedState => ({
+        sessionId: state.sessionId,
         isAgreed: state.isAgreed,
         rpNameEn: state.rpNameEn,
         rpContact: state.rpContact,
@@ -357,14 +393,33 @@ export const useApplyStore = create<ApplyStore>()(
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<ApplyPersistedState> | undefined;
-        return {
-          ...current,
-          ...p,
-          labelFiles: [],
+        const transient = {
+          labelFiles: [] as File[],
           ocrProcessing: false,
           aiSearchLoading: false,
           isAddingProduct: false,
           isAgreementModalOpen: false,
+        };
+        if (p == null || typeof p !== "object") {
+          const sid = resolvePersistedSessionId(undefined, current.sessionId);
+          return {
+            ...current,
+            sessionId: sid,
+            cartLines: migrateCartLinesSessionId(current.cartLines, sid),
+            ...transient,
+          };
+        }
+        const sessionId = resolvePersistedSessionId(p, current.sessionId);
+        const mergedLines =
+          p.cartLines != null
+            ? migrateCartLinesSessionId(p.cartLines, sessionId)
+            : migrateCartLinesSessionId(current.cartLines, sessionId);
+        return {
+          ...current,
+          ...p,
+          sessionId,
+          cartLines: mergedLines,
+          ...transient,
         };
       },
     },

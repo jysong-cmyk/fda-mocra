@@ -35,6 +35,8 @@ export type CommonRequiredKey =
 /** 서버에 반영된 제품 행 id + 목록·수정용 */
 export type CartLine = {
   id: string;
+  /** 비회원 apply 세션 UUID — DB `session_id`·삭제 시 로컬과 일치 검증 */
+  sessionId: string;
   productNameEn: string;
   category1: string;
   category2: string;

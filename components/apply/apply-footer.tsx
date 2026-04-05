@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 const kb = "break-keep text-balance" as const;
 
@@ -9,6 +10,10 @@ type Props = {
   onPrev?: () => void;
   prevHref?: string;
   nextLabel?: string;
+  /** 기본 오른쪽 화살표(→) 숨김 — 아이콘+문구만 쓸 때 */
+  hideNextArrow?: boolean;
+  /** 주요 액션 버튼 앞에 아이콘 등 */
+  nextLeading?: ReactNode;
   onNext?: () => void;
   nextDisabled?: boolean;
   /** Step 3: 결제 CTA 대신 일반 다음 자리 */
@@ -22,6 +27,8 @@ export function ApplyFooter({
   onPrev,
   prevHref,
   nextLabel = "저장하고 다음 단계로",
+  hideNextArrow = false,
+  nextLeading,
   onNext,
   nextDisabled = false,
   paymentMode = false,
@@ -74,9 +81,11 @@ export function ApplyFooter({
             type="button"
             disabled={nextDisabled}
             onClick={onNext}
-            className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-950 px-8 py-3.5 text-sm font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-950 px-8 py-3.5 text-sm font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
           >
-            {nextLabel} →
+            {nextLeading}
+            <span>{nextLabel}</span>
+            {hideNextArrow ? null : <span aria-hidden>→</span>}
           </button>
         )}
       </div>

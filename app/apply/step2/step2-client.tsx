@@ -1,8 +1,10 @@
 "use client";
 
+import { saveApplyProductAction } from "@/app/apply/save-product-action";
 import { fdaCategories } from "@/app/fdaCategories";
 import { AgreementModal } from "@/components/apply/agreement-modal";
 import { ApplyFooter } from "@/components/apply/apply-footer";
+import { IconShoppingCart } from "@/components/apply/icon-cart";
 import { ApplyStepper } from "@/components/apply/apply-stepper";
 import { Ag, ApplyFieldLabel } from "@/components/apply/field-label";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
@@ -12,13 +14,11 @@ import {
   FAKE_OCR_TEXT,
   pathLabelFrom,
   RP_PRODUCT_NAME_REGEX,
-  type CartLine,
 } from "@/lib/apply/types-and-constants";
-import { uploadLabelFiles } from "@/lib/apply/upload-labels";
-import { supabase } from "@/lib/supabase";
+import { APPLY_SAVE_PRODUCT_FIELD } from "@/lib/apply/save-product-server-validation";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApplyCardHeader, ApplyShell } from "../apply-shell";
 
 const kb = "break-keep text-balance" as const;
@@ -27,14 +27,107 @@ export function Step2Client() {
   const router = useRouter();
   const ocrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const productSectionRef = useRef<HTMLDivElement | null>(null);
+  const cartSuccessModalPanelRef = useRef<HTMLDivElement | null>(null);
+  const [cartSuccessModal, setCartSuccessModal] = useState<
+    null | "add" | "edit"
+  >(null);
 
   const s = useApplyStore();
+
+  const handleAddAnotherProduct = useCallback(() => {
+    useApplyStore.getState().clearProductZoneB();
+    setCartSuccessModal(null);
+    window.setTimeout(() => {
+      document
+        .getElementById("step2-container")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
+
+  const handleGoToCartList = useCallback(() => {
+    useApplyStore.getState().clearProductZoneB();
+    setCartSuccessModal(null);
+    router.push("/apply/step3");
+  }, [router]);
 
   useEffect(() => {
     return () => {
       if (ocrTimeoutRef.current != null) clearTimeout(ocrTimeoutRef.current);
     };
   }, []);
+
+  /** 성공 모달: ESC로 닫기 방지(명시적 버튼만 허용) */
+  useEffect(() => {
+    if (cartSuccessModal == null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [cartSuccessModal]);
+
+  /** 모달이 열린 동안 배경 스크롤 방지 */
+  useEffect(() => {
+    if (cartSuccessModal == null) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [cartSuccessModal]);
+
+  /** 성공 모달: Tab 포커스를 패널 안에 가둠 */
+  useEffect(() => {
+    if (cartSuccessModal == null) return;
+    const root = cartSuccessModalPanelRef.current;
+    if (root == null) return;
+
+    const getFocusable = () =>
+      Array.from(
+        root.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])",
+        ),
+      ).filter((el) => el.getClientRects().length > 0);
+
+    const focusables = getFocusable();
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    queueMicrotask(() => first.focus());
+
+    const onFocusInCapture = (e: FocusEvent) => {
+      const t = e.target as Node | null;
+      if (t != null && root.contains(t)) return;
+      first.focus();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = getFocusable();
+      if (list.length === 0) return;
+      const f = list[0];
+      const l = list[list.length - 1];
+      const ae = document.activeElement;
+      if (e.shiftKey) {
+        if (ae === f) {
+          e.preventDefault();
+          l.focus();
+        }
+      } else if (ae === l) {
+        e.preventDefault();
+        f.focus();
+      }
+    };
+
+    document.addEventListener("focusin", onFocusInCapture, true);
+    root.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("focusin", onFocusInCapture, true);
+      root.removeEventListener("keydown", onKeyDown);
+    };
+  }, [cartSuccessModal]);
 
   const l1Node = useMemo(
     () => fdaCategories.find((n) => n.value === s.category1) ?? null,
@@ -231,13 +324,14 @@ export function Step2Client() {
       return;
     }
 
-    const applicantNameTrim = st.applicantName.trim();
-    const applicantPhoneTrim = st.applicantPhone.trim();
-    const applicantEmailTrim = st.applicantEmail.trim();
-    const recommender = st.agentName.replace(/\s+/g, "");
-    const productNameEnTrim = st.productNameEn.trim();
-    const feiTrim = st.feiNumber.trim();
-    const ingredientTrim = st.ingredientText.trim();
+    const sessionId = st.sessionId.trim();
+    if (sessionId === "") {
+      alert(
+        "브라우저 세션을 확인할 수 없습니다. 페이지를 새로고침 후 다시 시도해 주세요.",
+      );
+      return;
+    }
+
     const files = [...st.labelFiles];
 
     if (st.editingId != null) {
@@ -255,131 +349,74 @@ export function Step2Client() {
         alert("라벨 이미지는 필수입니다.");
         return;
       }
-      st.setIsAddingProduct(true);
-      try {
-        let labelImageUrlFinal = line.labelImageUrl;
-        if (hasNewLabels) {
-          const urls = await uploadLabelFiles(files);
-          labelImageUrlFinal = urls.length > 0 ? urls.join(", ") : "";
-        }
-        const { error: updateError } = await supabase
-          .from("products")
-          .update({
-            rp_name_en: st.rpNameEn.trim(),
-            rp_contact: st.rpContact.trim(),
-            product_name_en: productNameEnTrim,
-            fei_number: feiTrim,
-            category1: st.category1,
-            category2: st.category2,
-            category3: st.category3,
-            ingredient_text: ingredientTrim,
-            agent_name: st.agentName,
-            applicant_name: applicantNameTrim,
-            applicant_phone: applicantPhoneTrim,
-            applicant_email: applicantEmailTrim,
-            recommender_name: recommender,
-            label_image_url: labelImageUrlFinal,
-          })
-          .eq("id", st.editingId);
-        if (updateError != null) throw updateError;
-        const updated: CartLine = {
-          id: st.editingId,
-          productNameEn: productNameEnTrim,
-          category1: st.category1,
-          category2: st.category2,
-          category3: st.category3,
-          feiNumber: feiTrim,
-          ingredientText: ingredientTrim,
-          labelImageUrl: labelImageUrlFinal,
-          rpNameEn: st.rpNameEn.trim(),
-          rpContact: st.rpContact.trim(),
-          agentName: st.agentName,
-          applicantName: applicantNameTrim,
-          applicantPhone: applicantPhoneTrim,
-          applicantEmail: applicantEmailTrim,
-        };
-        st.setCartLines((prev) =>
-          prev.map((c) => (c.id === st.editingId ? updated : c)),
-        );
-        st.setEditingId(null);
-        st.clearProductZoneB();
-        router.push("/apply/step3");
-      } catch (err) {
-        console.error(err);
+      const lineSession = line.sessionId.trim();
+      if (lineSession === "" || lineSession !== sessionId) {
         alert(
-          err instanceof Error
-            ? err.message
-            : "수정 반영 중 오류가 발생했습니다.",
+          "이 제품은 현재 브라우저 세션과 맞지 않습니다. 목록을 확인하거나 페이지를 새로고침해 주세요.",
         );
-      } finally {
-        st.setIsAddingProduct(false);
+        return;
       }
-      return;
     }
 
     st.setIsAddingProduct(true);
     try {
-      const labelImageUrls = await uploadLabelFiles(files);
-      const { data: inserted, error: insertError } = await supabase
-        .from("products")
-        .insert({
-          rp_name_en: st.rpNameEn.trim(),
-          rp_contact: st.rpContact.trim(),
-          product_name_en: productNameEnTrim,
-          fei_number: feiTrim,
-          category1: st.category1,
-          category2: st.category2,
-          category3: st.category3,
-          ingredient_text: ingredientTrim,
-          agent_name: st.agentName,
-          applicant_name: applicantNameTrim,
-          applicant_phone: applicantPhoneTrim,
-          applicant_email: applicantEmailTrim,
-          recommender_name: recommender,
-          label_image_url:
-            labelImageUrls.length > 0 ? labelImageUrls.join(", ") : "",
-        })
-        .select("id")
-        .single();
-      if (insertError != null) throw insertError;
-      if (inserted?.id == null || inserted.id === "") {
-        throw new Error(
-          "저장 후 제품 ID를 받지 못했습니다. RLS·정책을 확인해 주세요.",
+      const F = APPLY_SAVE_PRODUCT_FIELD;
+      const fd = new FormData();
+      fd.append(F.sessionId, sessionId);
+      fd.append(F.editingId, st.editingId ?? "");
+      fd.append(F.isAgreed, st.isAgreed ? "1" : "");
+      if (st.editingId == null) {
+        fd.append(
+          F.hasIngredientImage,
+          st.ingredientFileMeta != null ? "1" : "",
         );
       }
-      const joinedLabels =
-        labelImageUrls.length > 0 ? labelImageUrls.join(", ") : "";
-      const line: CartLine = {
-        id: inserted.id,
-        productNameEn: productNameEnTrim,
-        category1: st.category1,
-        category2: st.category2,
-        category3: st.category3,
-        feiNumber: feiTrim,
-        ingredientText: ingredientTrim,
-        labelImageUrl: joinedLabels,
-        rpNameEn: st.rpNameEn.trim(),
-        rpContact: st.rpContact.trim(),
-        agentName: st.agentName,
-        applicantName: applicantNameTrim,
-        applicantPhone: applicantPhoneTrim,
-        applicantEmail: applicantEmailTrim,
-      };
-      st.setCartLines((prev) => [...prev, line]);
+      fd.append(F.ingredientConfirmed, st.isIngredientConfirmed ? "1" : "");
+      fd.append(F.rpNameEn, st.rpNameEn.trim());
+      fd.append(F.rpContact, st.rpContact.trim());
+      fd.append(F.agentName, st.agentName);
+      fd.append(F.applicantName, st.applicantName.trim());
+      fd.append(F.applicantPhone, st.applicantPhone.trim());
+      fd.append(F.applicantEmail, st.applicantEmail.trim());
+      fd.append(F.productNameEn, st.productNameEn.trim());
+      fd.append(F.feiNumber, st.feiNumber.trim());
+      fd.append(F.category1, st.category1);
+      fd.append(F.category2, st.category2);
+      fd.append(F.category3, st.category3);
+      fd.append(F.ingredientText, st.ingredientText.trim());
+      fd.append(F.aiCategoryQuery, st.aiCategoryQuery.trim());
+      for (const file of files) {
+        fd.append(F.labels, file);
+      }
+
+      const res = await saveApplyProductAction(fd);
+      if (!res.ok) {
+        alert(res.error);
+        return;
+      }
+
+      if (res.mode === "edit") {
+        st.setCartLines((prev) =>
+          prev.map((c) => (c.id === res.cartLine.id ? res.cartLine : c)),
+        );
+        st.setEditingId(null);
+        setCartSuccessModal("edit");
+      } else {
+        st.setCartLines((prev) => [...prev, res.cartLine]);
+        setCartSuccessModal("add");
+      }
       st.setCommonRequiredError({});
-      st.clearProductZoneB();
-      router.push("/apply/step3");
     } catch (err) {
       console.error(err);
       alert(
         err instanceof Error
           ? err.message
-          : "목록 반영 중 오류가 발생했습니다. 네트워크와 설정을 확인한 뒤 다시 시도해 주세요.",
+          : "저장 중 오류가 발생했습니다. 네트워크와 설정을 확인한 뒤 다시 시도해 주세요.",
       );
     } finally {
       st.setIsAddingProduct(false);
     }
-  }, [router]);
+  }, [setCartSuccessModal]);
 
   return (
     <ApplyShell>
@@ -387,7 +424,10 @@ export function Step2Client() {
       <div className="flex flex-1 flex-col items-center px-4 py-8 sm:px-6 sm:py-12">
         <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-amber-100 bg-white shadow-lg shadow-emerald-950/5 ring-1 ring-amber-200/50">
           <ApplyCardHeader />
-          <div className="p-6 sm:p-8">
+          <div
+            id="step2-container"
+            className="scroll-mt-24 p-6 sm:p-8 sm:scroll-mt-28"
+          >
             <ApplyStepper activeStep={2} />
             <RegisterAiTrustStrip />
             <p className="mb-2 text-sm text-gray-600">
@@ -795,9 +835,11 @@ export function Step2Client() {
               showPrev
               prevHref="/apply/step1"
               nextLabel={
-                s.editingId != null
-                  ? "수정 저장 후 다음 단계로"
-                  : "저장하고 다음 단계로"
+                s.editingId != null ? "목록에 반영하기" : "목록에 추가하기"
+              }
+              hideNextArrow
+              nextLeading={
+                <IconShoppingCart className="h-5 w-5 text-amber-200" />
               }
               onNext={() => void runAddOrEdit()}
               nextDisabled={s.isAddingProduct}
@@ -805,6 +847,64 @@ export function Step2Client() {
           </div>
         </div>
       </div>
+
+      {cartSuccessModal != null ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-success-title"
+          onPointerDown={(e) => {
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div
+            ref={cartSuccessModalPanelRef}
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-200/60 bg-white shadow-2xl shadow-emerald-950/20"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-amber-100 bg-gradient-to-r from-emerald-900 to-emerald-950 px-6 py-5 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-300/20 ring-2 ring-amber-300/50">
+                <IconShoppingCart className="h-7 w-7 text-amber-200" />
+              </div>
+              <h2
+                id="cart-success-title"
+                className={`mt-4 text-lg font-bold text-amber-50 sm:text-xl ${kb}`}
+              >
+                {cartSuccessModal === "add"
+                  ? "제품이 성공적으로 목록에 추가되었습니다."
+                  : "수정한 내용이 목록에 반영되었습니다."}
+              </h2>
+            </div>
+            <div className="px-6 py-6">
+              <p className={`text-center text-sm leading-relaxed text-zinc-600 ${kb}`}>
+                {cartSuccessModal === "add"
+                  ? "같은 접수로 다른 제품을 더 담거나, 지금까지 담은 목록을 확인할 수 있습니다."
+                  : "목록에서 내용을 확인하거나, 이어서 다른 제품을 추가해 주세요."}
+              </p>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                <button
+                  type="button"
+                  onClick={handleAddAnotherProduct}
+                  className="inline-flex w-full items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-5 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50 sm:w-auto sm:min-w-[10rem]"
+                >
+                  다른 제품 추가하기
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGoToCartList}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-950 px-6 py-3.5 text-sm font-bold text-amber-100 shadow-lg transition hover:bg-emerald-900 sm:w-auto sm:min-w-[10rem]"
+                >
+                  등록 목록 보기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <AgreementModal />
     </ApplyShell>
   );

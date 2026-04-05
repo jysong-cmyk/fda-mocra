@@ -4,8 +4,8 @@ import { ApplyFooter } from "@/components/apply/apply-footer";
 import { ApplyStepper } from "@/components/apply/apply-stepper";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
 import { AicraHeader } from "@/components/aicra-header";
+import { deleteCartLineWithStorageCleanup } from "@/lib/apply/delete-cart-line";
 import { pathLabelFrom, type CartLine } from "@/lib/apply/types-and-constants";
-import { supabase } from "@/lib/supabase";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
@@ -23,6 +23,7 @@ export function Step3Client() {
     (s) => s.hydrateCommonFromCartLine,
   );
   const setCartLines = useApplyStore((s) => s.setCartLines);
+  const applySessionId = useApplyStore((s) => s.sessionId);
 
   const handleAddProduct = useCallback(() => {
     setEditingId(null);
@@ -46,7 +47,7 @@ export function Step3Client() {
   );
 
   const handleDelete = useCallback(
-    async (id: string) => {
+    async (line: CartLine) => {
       if (
         !window.confirm(
           "목록에서 이 제품을 삭제할까요? 삭제 후에는 복구할 수 없습니다.",
@@ -54,22 +55,24 @@ export function Step3Client() {
       ) {
         return;
       }
-      const { error } = await supabase.from("products").delete().eq("id", id);
-      if (error != null) {
+      const { error: delErr } = await deleteCartLineWithStorageCleanup(
+        line,
+        applySessionId,
+      );
+      if (delErr != null) {
         alert(
-          error.message ||
-            "삭제에 실패했습니다. 권한(RLS) 또는 네트워크를 확인해 주세요.",
+          `${delErr}\n\n권한(RLS) 또는 네트워크를 확인해 주세요.`,
         );
         return;
       }
-      setCartLines((prev) => prev.filter((x) => x.id !== id));
+      setCartLines((prev) => prev.filter((x) => x.id !== line.id));
       const st = useApplyStore.getState();
-      if (st.editingId === id) {
+      if (st.editingId === line.id) {
         setEditingId(null);
         clearProductZoneB();
       }
     },
-    [clearProductZoneB, setCartLines, setEditingId],
+    [applySessionId, clearProductZoneB, setCartLines, setEditingId],
   );
 
   return (
@@ -86,33 +89,46 @@ export function Step3Client() {
               추가하기」로 2단계로 돌아갑니다.
             </p>
 
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-emerald-950">
-                  등록 예정 제품 ({cartLines.length}건)
-                </h2>
-                <p className="mt-1 text-xs text-zinc-600">
-                  장바구니처럼 담긴 SKU입니다. 결제 전에 내용을 다시 확인해
-                  주세요.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleAddProduct}
-                className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-800/40 bg-emerald-950/5 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950/10"
-              >
-                + 제품 추가하기
-              </button>
+            <div className="mb-6">
+              <h2 className="text-lg font-bold text-emerald-950">
+                등록 예정 제품 ({cartLines.length}건)
+              </h2>
+              <p className="mt-1 text-xs text-zinc-600">
+                장바구니처럼 담긴 SKU입니다. 결제 전에 내용을 다시 확인해
+                주세요.
+              </p>
+              {cartLines.length > 0 ? (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleAddProduct}
+                    className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-800/40 bg-emerald-950/5 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950/10"
+                  >
+                    + 제품 추가하기
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             {cartLines.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-amber-300/60 bg-amber-50/40 px-6 py-14 text-center">
-                <p className={`text-sm font-medium text-emerald-900 ${kb}`}>
-                  아직 담긴 제품이 없습니다.
+              <div className="flex min-h-[min(22rem,50vh)] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-400/50 bg-gradient-to-b from-amber-50/90 to-stone-50/80 px-6 py-16 text-center shadow-inner">
+                <p className={`text-base font-semibold text-emerald-950 sm:text-lg ${kb}`}>
+                  아직 등록할 제품이 없습니다
                 </p>
-                <p className="mt-2 text-xs text-zinc-600">
-                  「제품 추가하기」로 2단계에서 첫 제품을 등록해 주세요.
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-zinc-600">
+                  2단계에서 제품 정보를 입력하고 저장하면 여기 목록에
+                  표시됩니다.
                 </p>
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  className={`mt-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-10 py-5 text-lg font-bold text-amber-100 shadow-xl shadow-emerald-950/25 transition hover:bg-emerald-900 hover:shadow-emerald-950/35 ${kb}`}
+                >
+                  <span className="text-2xl font-light leading-none" aria-hidden>
+                    +
+                  </span>
+                  등록할 제품 추가하기
+                </button>
               </div>
             ) : (
               <ul className="space-y-3">
@@ -146,7 +162,7 @@ export function Step3Client() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void handleDelete(line.id)}
+                        onClick={() => void handleDelete(line)}
                         className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
                       >
                         삭제
