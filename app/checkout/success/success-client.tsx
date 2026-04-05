@@ -93,7 +93,7 @@ export function CheckoutSuccessClient() {
             </p>
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
               <Link
-                href="/register"
+                href="/apply/step1"
                 className="inline-flex items-center justify-center rounded-xl bg-emerald-950 px-6 py-3 text-sm font-semibold text-amber-100 transition hover:bg-emerald-900"
               >
                 등록 절차 계속하기
