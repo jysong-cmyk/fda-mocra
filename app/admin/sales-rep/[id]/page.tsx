@@ -18,13 +18,13 @@ import {
   groupProductsByCompany,
   statusBadgeLabel,
 } from "@/lib/dashboard-data";
+import { ADMIN_EMAIL } from "@/lib/admin-constants";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const kb = "break-keep text-balance" as const;
-const ADMIN_EMAIL = "jysong@depack.co.kr";
 
 type ProductRow = {
   id?: string;

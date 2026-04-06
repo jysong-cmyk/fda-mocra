@@ -1,6 +1,7 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
+import { AdminCsvExportButton } from "@/components/admin-csv-export-button";
 import { AicraHeader } from "@/components/aicra-header";
 import { DashboardFilterToolbar } from "@/components/dashboard-filter-toolbar";
 import { DashboardTableSkeleton } from "@/components/dashboard-skeleton";
@@ -18,11 +19,10 @@ import {
   summarizeBySalesRep,
   toggleSortDir,
 } from "@/lib/dashboard-data";
+import { ADMIN_EMAIL } from "@/lib/admin-constants";
 import { supabase } from "@/lib/supabase";
 
 const kb = "break-keep text-balance" as const;
-
-const ADMIN_EMAIL = "jysong@depack.co.kr";
 
 type ProductRow = {
   id?: string;
@@ -674,6 +674,7 @@ export default function AdminPage() {
             )}
           </>
         )}
+        <AdminCsvExportButton />
       </div>
     </div>
   );
