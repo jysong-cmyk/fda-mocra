@@ -23,14 +23,20 @@ import { ApplyCardHeader, ApplyShell } from "../apply-shell";
 
 const kb = "break-keep text-balance" as const;
 
+type OcrReviewState = "idle" | "needs_review" | "reviewed";
+
 export function Step2Client() {
   const router = useRouter();
   const ocrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const productSectionRef = useRef<HTMLDivElement | null>(null);
   const cartSuccessModalPanelRef = useRef<HTMLDivElement | null>(null);
+  const ingredientTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const prevOcrProcessingRef = useRef(false);
   const [cartSuccessModal, setCartSuccessModal] = useState<
     null | "add" | "edit"
   >(null);
+  const [ocrReviewState, setOcrReviewState] = useState<OcrReviewState>("idle");
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const s = useApplyStore();
 
@@ -55,6 +61,35 @@ export function Step2Client() {
       if (ocrTimeoutRef.current != null) clearTimeout(ocrTimeoutRef.current);
     };
   }, []);
+
+  /** OCR이 끝나 텍스트가 채워진 직후: 검토 단계(파란 강조) */
+  useEffect(() => {
+    if (!s.showIngredientTextarea) {
+      setOcrReviewState("idle");
+      prevOcrProcessingRef.current = s.ocrProcessing;
+      return;
+    }
+    if (s.isIngredientConfirmed) {
+      setOcrReviewState("idle");
+      prevOcrProcessingRef.current = s.ocrProcessing;
+      return;
+    }
+    const finishedRun =
+      prevOcrProcessingRef.current === true && s.ocrProcessing === false;
+    prevOcrProcessingRef.current = s.ocrProcessing;
+    if (finishedRun && s.ingredientText.trim() !== "") {
+      setOcrReviewState("needs_review");
+    }
+  }, [
+    s.showIngredientTextarea,
+    s.isIngredientConfirmed,
+    s.ocrProcessing,
+    s.ingredientText,
+  ]);
+
+  useEffect(() => {
+    if (s.ocrProcessing) setOcrReviewState("idle");
+  }, [s.ocrProcessing]);
 
   /** 성공 모달: ESC로 닫기 방지(명시적 버튼만 허용) */
   useEffect(() => {
@@ -159,6 +194,8 @@ export function Step2Client() {
       );
       return;
     }
+    setSearchError(null);
+    st.setAiRecommendation(null);
     st.setAiSearchLoading(true);
     try {
       const res = await fetch("/api/recommend-category", {
@@ -187,10 +224,8 @@ export function Step2Client() {
       );
     } catch (err) {
       console.error(err);
-      alert(
-        err instanceof Error
-          ? err.message
-          : "카테고리 추천 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      setSearchError(
+        "검색 중 오류가 발생했습니다. 다시 시도해 주세요.",
       );
     } finally {
       useApplyStore.getState().setAiSearchLoading(false);
@@ -515,9 +550,19 @@ export function Step2Client() {
                     type="button"
                     onClick={() => void handleAiSearchClick()}
                     disabled={s.aiSearchLoading || s.isAddingProduct}
-                    className="shrink-0 rounded-xl border border-amber-400/40 bg-emerald-950 px-5 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:opacity-60"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-emerald-950 px-5 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:opacity-60"
                   >
-                    {s.aiSearchLoading ? "검색 중..." : "검색"}
+                    {s.aiSearchLoading ? (
+                      <>
+                        <span
+                          className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-stone-400/40 border-t-amber-200"
+                          aria-hidden
+                        />
+                        검색 중...
+                      </>
+                    ) : (
+                      "검색"
+                    )}
                   </button>
                 </div>
                 {s.aiCategoryQueryError ? (
@@ -525,29 +570,78 @@ export function Step2Client() {
                     특수기호는 제한됩니다.
                   </p>
                 ) : null}
-                {s.aiRecommendation != null ? (
-                  <div className="mt-3 rounded-lg border border-amber-100 bg-stone-50 px-3 py-2.5 text-sm text-zinc-800">
-                    <p>
-                      <span className="font-semibold text-emerald-900">
-                        추천 결과:
-                      </span>{" "}
-                      {s.aiRecommendation.pathLabel}
-                    </p>
-                    <button
-                      type="button"
-                      disabled={s.isAddingProduct}
-                      onClick={() => {
-                        if (s.aiRecommendation == null) return;
-                        s.setCategory1(s.aiRecommendation.category1);
-                        s.setCategory2(s.aiRecommendation.category2);
-                        s.setCategory3(s.aiRecommendation.category3);
-                        s.setAiRecommendation(null);
-                        s.clearProductFieldKey("category");
-                      }}
-                      className="mt-2 w-full rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:opacity-60 sm:w-auto sm:px-4"
-                    >
-                      선택
-                    </button>
+                {s.aiSearchLoading ||
+                s.aiRecommendation != null ||
+                searchError != null ? (
+                  <div
+                    className={`mt-3 flex min-h-[7.5rem] flex-col rounded-lg border border-amber-100 bg-stone-50 px-3 py-2.5 text-sm text-zinc-800 ${
+                      s.aiSearchLoading || searchError != null
+                        ? "items-center justify-center"
+                        : ""
+                    }`}
+                  >
+                    {s.aiSearchLoading ? (
+                      <div
+                        className="flex flex-col items-center justify-center gap-2"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <span
+                          className="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-emerald-900/20 border-t-amber-400"
+                          aria-hidden
+                        />
+                        <p
+                          className={`text-center font-medium text-emerald-900/75 animate-pulse ${kb}`}
+                        >
+                          AI가 찾고 있습니다...
+                        </p>
+                      </div>
+                    ) : searchError != null ? (
+                      <div
+                        className={`flex max-w-full items-start gap-2 text-left ${kb}`}
+                        role="alert"
+                      >
+                        <svg
+                          className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <p className="text-sm font-medium text-amber-900">
+                          {searchError}
+                        </p>
+                      </div>
+                    ) : s.aiRecommendation != null ? (
+                      <>
+                        <p>
+                          <span className="font-semibold text-emerald-900">
+                            추천 결과:
+                          </span>{" "}
+                          {s.aiRecommendation.pathLabel}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={s.isAddingProduct}
+                          onClick={() => {
+                            if (s.aiRecommendation == null) return;
+                            s.setCategory1(s.aiRecommendation.category1);
+                            s.setCategory2(s.aiRecommendation.category2);
+                            s.setCategory3(s.aiRecommendation.category3);
+                            s.setAiRecommendation(null);
+                            s.clearProductFieldKey("category");
+                          }}
+                          className="mt-2 w-full rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:opacity-60 sm:w-auto sm:px-4"
+                        >
+                          선택
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -775,6 +869,7 @@ export function Step2Client() {
                       분석 결과 · 직접 수정 가능
                     </label>
                     <textarea
+                      ref={ingredientTextareaRef}
                       id="apply-ingredient-text"
                       value={s.ingredientText}
                       onChange={(e) => {
@@ -782,18 +877,38 @@ export function Step2Client() {
                         s.clearProductFieldKey("ingredientConfirm");
                         s.setIngredientText(e.target.value);
                         s.setIsIngredientConfirmed(false);
+                        setOcrReviewState("reviewed");
+                      }}
+                      onFocus={() => {
+                        setOcrReviewState((prev) =>
+                          prev === "needs_review" ? "reviewed" : prev,
+                        );
                       }}
                       rows={5}
                       disabled={s.isAddingProduct}
                       className={`w-full resize-y rounded-lg border bg-white px-3 py-2.5 text-sm outline-none disabled:bg-zinc-50 ${
                         s.productFieldError.ingredientText === true
                           ? invalidFieldClass
-                          : normalFieldClass
+                          : ocrReviewState === "needs_review"
+                            ? "border-2 border-blue-500 ring-2 ring-blue-200/90 focus:border-blue-600 focus:ring-blue-300"
+                            : ocrReviewState === "reviewed"
+                              ? "border-zinc-200 ring-1 ring-zinc-200/80 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-300"
+                              : normalFieldClass
                       }`}
                     />
+                    {ocrReviewState === "needs_review" ? (
+                      <p
+                        className={`mt-2 text-sm font-medium text-blue-600 ${kb}`}
+                      >
+                        👉 OCR로 읽어온 영문 성분명입니다. 이미지를 보고 오타가
+                        있다면 네모박스 안을 클릭해 수정해 주세요. 수정을 마치면
+                        아래 [성분표 확인] 버튼을 눌러주세요.
+                      </p>
+                    ) : null}
                     <div
                       className={
-                        s.productFieldError.ingredientConfirm === true
+                        s.productFieldError.ingredientConfirm === true &&
+                        ocrReviewState !== "needs_review"
                           ? "mt-2 inline-block rounded-lg p-1 ring-2 ring-red-400"
                           : "mt-2"
                       }
@@ -802,10 +917,16 @@ export function Step2Client() {
                         type="button"
                         disabled={s.isAddingProduct}
                         onClick={() => {
+                          setOcrReviewState("idle");
                           s.setIsIngredientConfirmed(true);
                           s.clearProductFieldKey("ingredientConfirm");
                         }}
-                        className="w-full rounded-lg border border-zinc-300 bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-200 disabled:opacity-60 sm:w-auto sm:px-6"
+                        className={`w-full rounded-lg border bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-200 disabled:opacity-60 sm:w-auto sm:px-6 ${
+                          ocrReviewState === "reviewed" &&
+                          !s.isIngredientConfirmed
+                            ? "animate-pulse border-2 border-green-500 ring-2 ring-green-200/90"
+                            : "border-zinc-300"
+                        }`}
                       >
                         성분표 확인
                       </button>
