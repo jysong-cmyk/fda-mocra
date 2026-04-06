@@ -417,7 +417,7 @@ export default function SalesPage() {
             <button
               type="submit"
               disabled={authPending}
-              className="w-full rounded-xl bg-emerald-950 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full cursor-pointer rounded-xl bg-emerald-950 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {authPending
                 ? "처리 중..."
@@ -434,7 +434,7 @@ export default function SalesPage() {
               setAuthError(null);
               setAuthMessage(null);
             }}
-            className="mt-6 w-full text-center text-sm font-medium text-emerald-800 hover:text-emerald-950"
+            className="mt-6 w-full cursor-pointer text-center text-sm font-medium text-emerald-800 hover:text-emerald-950"
           >
             {isSignUpMode
               ? "이미 계정이 있으신가요? 로그인"
@@ -443,7 +443,7 @@ export default function SalesPage() {
 
           <Link
             href="/"
-            className="mt-6 block text-center text-sm font-medium text-emerald-900/75 hover:text-emerald-950"
+            className="mt-6 block cursor-pointer text-center text-sm font-medium text-emerald-900/75 hover:text-emerald-950"
           >
             ← 메인으로
           </Link>
@@ -473,20 +473,20 @@ export default function SalesPage() {
               type="button"
               onClick={() => void loadDashboard(session.user.id)}
               disabled={dashboardLoading}
-              className="rounded-lg border border-emerald-950/20 bg-emerald-950 px-4 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:opacity-50"
+              className="cursor-pointer rounded-lg border border-emerald-950/20 bg-emerald-950 px-4 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               새로고침
             </button>
             <button
               type="button"
               onClick={() => void supabase.auth.signOut()}
-              className="rounded-lg border border-amber-200/60 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-stone-50"
+              className="cursor-pointer rounded-lg border border-amber-200/60 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-stone-50"
             >
               로그아웃
             </button>
             <Link
               href="/"
-              className="rounded-lg border border-amber-200/60 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-stone-50"
+              className="cursor-pointer rounded-lg border border-amber-200/60 px-4 py-2 text-sm font-semibold text-emerald-950 hover:bg-stone-50"
             >
               메인
             </Link>

@@ -16,7 +16,7 @@ export function DashboardBackLink({
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950 ${kb}`}
+      className={`inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-emerald-800 transition-colors hover:text-emerald-950 ${kb}`}
     >
       {label}
     </Link>

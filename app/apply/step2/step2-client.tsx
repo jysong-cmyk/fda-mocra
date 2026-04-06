@@ -550,7 +550,7 @@ export function Step2Client() {
                     type="button"
                     onClick={() => void handleAiSearchClick()}
                     disabled={s.aiSearchLoading || s.isAddingProduct}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-emerald-950 px-5 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:opacity-60"
+                    className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-emerald-950 px-5 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {s.aiSearchLoading ? (
                       <>
@@ -636,7 +636,7 @@ export function Step2Client() {
                             s.setAiRecommendation(null);
                             s.clearProductFieldKey("category");
                           }}
-                          className="mt-2 w-full rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:opacity-60 sm:w-auto sm:px-4"
+                          className="mt-2 w-full cursor-pointer rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
                         >
                           선택
                         </button>
@@ -815,7 +815,7 @@ export function Step2Client() {
                           type="button"
                           disabled={s.isAddingProduct}
                           onClick={() => removeLabelFile(index)}
-                          className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700"
+                          className="shrink-0 cursor-pointer text-xs font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed"
                         >
                           삭제
                         </button>
@@ -921,7 +921,7 @@ export function Step2Client() {
                           s.setIsIngredientConfirmed(true);
                           s.clearProductFieldKey("ingredientConfirm");
                         }}
-                        className={`w-full rounded-lg border bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-200 disabled:opacity-60 sm:w-auto sm:px-6 ${
+                        className={`w-full cursor-pointer rounded-lg border bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 ${
                           ocrReviewState === "reviewed" &&
                           !s.isIngredientConfirmed
                             ? "animate-pulse border-2 border-green-500 ring-2 ring-green-200/90"
@@ -945,7 +945,7 @@ export function Step2Client() {
                   type="button"
                   disabled={s.isAddingProduct}
                   onClick={() => s.clearProductZoneB()}
-                  className="w-full rounded-xl border-2 border-zinc-300 bg-white py-3 text-sm font-semibold text-zinc-800 hover:bg-stone-50 disabled:opacity-60"
+                  className="w-full cursor-pointer rounded-xl border-2 border-zinc-300 bg-white py-3 text-sm font-semibold text-zinc-800 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   수정 취소
                 </button>
@@ -1009,14 +1009,14 @@ export function Step2Client() {
                 <button
                   type="button"
                   onClick={handleAddAnotherProduct}
-                  className="inline-flex w-full items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-5 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50 sm:w-auto sm:min-w-[10rem]"
+                  className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-5 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50 sm:w-auto sm:min-w-[10rem]"
                 >
                   다른 제품 추가하기
                 </button>
                 <button
                   type="button"
                   onClick={handleGoToCartList}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-950 px-6 py-3.5 text-sm font-bold text-amber-100 shadow-lg transition hover:bg-emerald-900 sm:w-auto sm:min-w-[10rem]"
+                  className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl bg-emerald-950 px-6 py-3.5 text-sm font-bold text-amber-100 shadow-lg transition hover:bg-emerald-900 sm:w-auto sm:min-w-[10rem]"
                 >
                   등록 목록 보기
                 </button>

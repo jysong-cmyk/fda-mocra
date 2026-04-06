@@ -302,7 +302,7 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={loginPending}
-              className="w-full rounded-lg bg-emerald-950 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full cursor-pointer rounded-lg bg-emerald-950 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loginPending ? "로그인 중…" : "로그인"}
             </button>
@@ -311,14 +311,14 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => void supabase.auth.signOut()}
-              className="mt-4 w-full rounded-lg border border-zinc-300 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+              className="mt-4 w-full cursor-pointer rounded-lg border border-zinc-300 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
             >
               로그아웃
             </button>
           ) : null}
           <Link
             href="/"
-            className="mt-6 inline-block text-sm font-medium text-emerald-900/80 hover:text-emerald-950"
+            className="mt-6 inline-block cursor-pointer text-sm font-medium text-emerald-900/80 hover:text-emerald-950"
           >
             ← 메인으로
           </Link>
@@ -336,7 +336,7 @@ export default function AdminPage() {
           <div>
             <Link
               href="/"
-              className="mb-3 inline-block text-sm font-medium text-emerald-900/75 hover:text-emerald-950"
+              className="mb-3 inline-block cursor-pointer text-sm font-medium text-emerald-900/75 hover:text-emerald-950"
             >
               ← 메인으로
             </Link>
@@ -351,7 +351,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() => void supabase.auth.signOut()}
-              className="rounded-lg border border-amber-200/60 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 shadow-sm transition-colors hover:bg-stone-50"
+              className="cursor-pointer rounded-lg border border-amber-200/60 bg-white px-4 py-2 text-sm font-semibold text-emerald-950 shadow-sm transition-colors hover:bg-stone-50"
             >
               로그아웃
             </button>
@@ -359,7 +359,7 @@ export default function AdminPage() {
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="shrink-0 rounded-lg border border-emerald-950/20 bg-emerald-950 px-4 py-2 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 cursor-pointer rounded-lg border border-emerald-950/20 bg-emerald-950 px-4 py-2 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               새로고침
             </button>
@@ -434,7 +434,7 @@ export default function AdminPage() {
                     role="tab"
                     aria-selected={adminTab === "company"}
                     onClick={() => setAdminTab("company")}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                       adminTab === "company"
                         ? "bg-emerald-950 text-amber-100 shadow-sm"
                         : "text-emerald-950/80 hover:bg-stone-50"
@@ -447,7 +447,7 @@ export default function AdminPage() {
                     role="tab"
                     aria-selected={adminTab === "rep"}
                     onClick={() => setAdminTab("rep")}
-                    className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`cursor-pointer rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                       adminTab === "rep"
                         ? "bg-emerald-950 text-amber-100 shadow-sm"
                         : "text-emerald-950/80 hover:bg-stone-50"

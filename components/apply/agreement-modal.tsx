@@ -295,14 +295,14 @@ export function AgreementModal() {
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="w-full rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+            className="w-full cursor-pointer rounded-lg border-2 border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
           >
             닫기
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="w-full rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
+            className="w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
           >
             위 내용에 동의하고 적용하기
           </button>

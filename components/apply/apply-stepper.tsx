@@ -29,7 +29,7 @@ export function ApplyStepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
             >
               <Link
                 href={step.href}
-                className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border-2 px-3 py-2.5 transition-all sm:py-3 ${
+                className={`flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border-2 px-3 py-2.5 transition-all sm:py-3 ${
                   isCurrent
                     ? "border-emerald-600 bg-gradient-to-br from-emerald-50 to-amber-50/80 shadow-md shadow-emerald-900/10 ring-2 ring-amber-300/50"
                     : isDone

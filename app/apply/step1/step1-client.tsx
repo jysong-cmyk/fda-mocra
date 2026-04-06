@@ -138,7 +138,7 @@ export function Step1Client() {
                       clearCommonRequiredKey("agreement");
                       setAgreementModalOpen(true);
                     }}
-                    className="rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900"
+                    className="cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900"
                   >
                     서비스 대행 동의서 보기 및 정보 입력(필수)
                   </button>
@@ -161,7 +161,7 @@ export function Step1Client() {
                     <button
                       type="button"
                       onClick={() => setAgreementModalOpen(true)}
-                      className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
+                      className="cursor-pointer shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100"
                     >
                       수정하기
                     </button>

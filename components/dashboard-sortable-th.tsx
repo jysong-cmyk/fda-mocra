@@ -37,7 +37,7 @@ export function SortableTh({
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className="inline-flex w-full items-center gap-0.5 text-left text-xs font-semibold uppercase tracking-wide text-amber-100/95 transition-colors hover:text-amber-50"
+        className="inline-flex w-full cursor-pointer items-center gap-0.5 text-left text-xs font-semibold uppercase tracking-wide text-amber-100/95 transition-colors hover:text-amber-50"
       >
         {label}
         {arrow}

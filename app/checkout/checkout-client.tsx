@@ -270,13 +270,13 @@ export function CheckoutClient() {
               type="button"
               disabled={!ready || paying || initError != null}
               onClick={() => void handlePay()}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 px-8 py-4 text-base font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:from-emerald-700 hover:to-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 px-8 py-4 text-base font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:from-emerald-700 hover:to-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {paying ? "결제 창으로 이동 중…" : `${formatKrw(MOCRA_CHECKOUT_AMOUNT_KRW)} 결제하기`}
             </button>
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-xl border border-emerald-950/20 bg-white px-6 py-4 text-sm font-semibold text-emerald-950 transition hover:bg-stone-50"
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-emerald-950/20 bg-white px-6 py-4 text-sm font-semibold text-emerald-950 transition hover:bg-stone-50"
             >
               취소하고 돌아가기
             </Link>

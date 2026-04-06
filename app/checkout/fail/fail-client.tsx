@@ -89,13 +89,13 @@ export function CheckoutFailClient() {
             <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
               <Link
                 href="/checkout"
-                className="inline-flex items-center justify-center rounded-xl bg-emerald-950 px-6 py-3 text-sm font-semibold text-amber-100 transition hover:bg-emerald-900"
+                className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-emerald-950 px-6 py-3 text-sm font-semibold text-amber-100 transition hover:bg-emerald-900"
               >
                 다시 결제하기
               </Link>
               <Link
                 href="/"
-                className="inline-flex items-center justify-center rounded-xl border border-emerald-950/20 bg-white px-6 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-stone-50"
+                className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-emerald-950/20 bg-white px-6 py-3 text-sm font-semibold text-emerald-950 transition hover:bg-stone-50"
               >
                 메인으로
               </Link>

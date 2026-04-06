@@ -102,7 +102,7 @@ export function Step3Client() {
                   <button
                     type="button"
                     onClick={handleAddProduct}
-                    className="inline-flex items-center justify-center rounded-xl border-2 border-emerald-800/40 bg-emerald-950/5 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950/10"
+                    className="inline-flex cursor-pointer items-center justify-center rounded-xl border-2 border-emerald-800/40 bg-emerald-950/5 px-5 py-3 text-sm font-bold text-emerald-950 transition hover:bg-emerald-950/10"
                   >
                     + 제품 추가하기
                   </button>
@@ -122,7 +122,7 @@ export function Step3Client() {
                 <button
                   type="button"
                   onClick={handleAddProduct}
-                  className={`mt-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-10 py-5 text-lg font-bold text-amber-100 shadow-xl shadow-emerald-950/25 transition hover:bg-emerald-900 hover:shadow-emerald-950/35 ${kb}`}
+                  className={`mt-10 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-10 py-5 text-lg font-bold text-amber-100 shadow-xl shadow-emerald-950/25 transition hover:bg-emerald-900 hover:shadow-emerald-950/35 ${kb}`}
                 >
                   <span className="text-2xl font-light leading-none" aria-hidden>
                     +
@@ -156,14 +156,14 @@ export function Step3Client() {
                       <button
                         type="button"
                         onClick={() => handleEdit(line)}
-                        className="rounded-lg border border-amber-200/60 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-50"
+                        className="cursor-pointer rounded-lg border border-amber-200/60 bg-white px-3 py-2 text-xs font-semibold text-emerald-900 shadow-sm transition hover:bg-emerald-50"
                       >
                         수정
                       </button>
                       <button
                         type="button"
                         onClick={() => void handleDelete(line)}
-                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                        className="cursor-pointer rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
                       >
                         삭제
                       </button>

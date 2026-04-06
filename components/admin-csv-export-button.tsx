@@ -72,7 +72,7 @@ export function AdminCsvExportButton() {
         type="button"
         onClick={() => void handleClick()}
         disabled={pending}
-        className="w-full rounded-2xl border-2 border-amber-300/60 bg-gradient-to-r from-emerald-900 to-emerald-950 px-6 py-5 text-center text-base font-bold tracking-tight text-amber-50 shadow-lg shadow-emerald-950/25 transition-[transform,opacity] hover:from-emerald-950 hover:to-emerald-950 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:py-6 sm:text-lg"
+        className="w-full cursor-pointer rounded-2xl border-2 border-amber-300/60 bg-gradient-to-r from-emerald-900 to-emerald-950 px-6 py-5 text-center text-base font-bold tracking-tight text-amber-50 shadow-lg shadow-emerald-950/25 transition-[transform,opacity] hover:from-emerald-950 hover:to-emerald-950 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 sm:py-6 sm:text-lg"
       >
         {pending ? "파일 준비 중…" : "고객 데이터 엑셀(CSV) 다운로드"}
       </button>

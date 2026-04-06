@@ -43,7 +43,7 @@ export function ApplyFooter({
           prevHref != null ? (
             <Link
               href={prevHref}
-              className="inline-flex items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50"
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50"
             >
               ← 이전 단계로
             </Link>
@@ -51,7 +51,7 @@ export function ApplyFooter({
             <button
               type="button"
               onClick={onPrev}
-              className="inline-flex items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50"
+              className="inline-flex cursor-pointer items-center justify-center rounded-xl border-2 border-zinc-300 bg-white px-6 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-stone-50"
             >
               ← 이전 단계로
             </button>
@@ -71,7 +71,7 @@ export function ApplyFooter({
           ) : (
             <Link
               href="/checkout"
-              className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200 px-8 py-4 text-base font-bold text-emerald-950 shadow-lg shadow-emerald-950/20 ring-2 ring-amber-500/40 transition hover:from-amber-300 hover:to-amber-100 sm:w-auto sm:min-w-[14rem]"
+              className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200 px-8 py-4 text-base font-bold text-emerald-950 shadow-lg shadow-emerald-950/20 ring-2 ring-amber-500/40 transition hover:from-amber-300 hover:to-amber-100 sm:w-auto sm:min-w-[14rem]"
             >
               결제하기
             </Link>
@@ -81,7 +81,7 @@ export function ApplyFooter({
             type="button"
             disabled={nextDisabled}
             onClick={onNext}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-950 px-8 py-3.5 text-sm font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
+            className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-950 px-8 py-3.5 text-sm font-bold text-amber-100 shadow-lg shadow-emerald-950/25 transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[12rem]"
           >
             {nextLeading}
             <span>{nextLabel}</span>
