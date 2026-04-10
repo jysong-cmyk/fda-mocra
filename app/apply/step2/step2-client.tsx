@@ -505,7 +505,7 @@ export function Step2Client() {
                     );
                   }}
                   disabled={s.isAddingProduct}
-                  className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 ${
+                  className={`tour-step-3 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 ${
                     s.productFieldError.productNameEn === true ||
                     s.productNameEnError
                       ? invalidFieldClass
@@ -526,7 +526,7 @@ export function Step2Client() {
                     제품 카테고리 (<Ag>Aicra</Ag> 빠른 카테고리 찾기)
                   </span>
                 </ApplyFieldLabel>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <div className="tour-step-5 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <input
                     id="apply-ai-cat"
                     type="text"
@@ -844,7 +844,7 @@ export function Step2Client() {
                   accept="image/*"
                   disabled={s.isAddingProduct}
                   onChange={handleIngredientImageChange}
-                  className="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:opacity-50"
+                  className="tour-step-4 block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:opacity-50"
                 />
                 {s.ocrProcessing ? (
                   <div

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { ApplyLayoutClient } from "./apply-layout-client";
 
 export const metadata: Metadata = {
   title: "MoCRA 등록 신청 | Aicra",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ApplyLayout({ children }: { children: ReactNode }) {
-  return children;
+  return <ApplyLayoutClient>{children}</ApplyLayoutClient>;
 }

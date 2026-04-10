@@ -120,7 +120,7 @@ export function Step1Client() {
               </div>
 
               <div
-                className={`rounded-lg border border-gray-200 bg-white/80 p-4 ${
+                className={`tour-step-1 rounded-lg border border-gray-200 bg-white/80 p-4 ${
                   commonRequiredError.agreement === true
                     ? "ring-2 ring-red-400 ring-offset-2"
                     : ""
@@ -188,7 +188,7 @@ export function Step1Client() {
                     setRpNameEn(sanitized);
                     clearCommonRequiredKey("rpNameEn");
                   }}
-                  className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
+                  className={`tour-step-2 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
                     rpNameEnError || commonRequiredError.rpNameEn === true
                       ? invalidFieldClass
                       : normalFieldClass
