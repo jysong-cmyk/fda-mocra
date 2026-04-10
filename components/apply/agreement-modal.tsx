@@ -210,7 +210,7 @@ export function AgreementModal() {
                 setApplicantName(sanitized);
                 clearCommonRequiredKey("applicantName");
               }}
-              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`tour-step-1-company w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 nameError !== "" || commonRequiredError.applicantName === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -244,7 +244,7 @@ export function AgreementModal() {
                 setApplicantPhone(sanitized);
                 clearCommonRequiredKey("applicantPhone");
               }}
-              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`tour-step-1-contact w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 phoneError !== "" || commonRequiredError.applicantPhone === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -278,7 +278,7 @@ export function AgreementModal() {
                 setApplicantEmail(sanitized);
                 clearCommonRequiredKey("applicantEmail");
               }}
-              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`tour-step-1-email w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 emailError !== "" || commonRequiredError.applicantEmail === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -302,7 +302,7 @@ export function AgreementModal() {
           <button
             type="button"
             onClick={handleSave}
-            className="w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
+            className="tour-step-1-submit w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
           >
             위 내용에 동의하고 적용하기
           </button>
