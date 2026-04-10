@@ -184,13 +184,13 @@ export function AgreementModal() {
           </p>
           <div>
             <label
-              htmlFor="apply-applicant-name"
+              htmlFor="tour-step-1-company"
               className="mb-1 block text-xs font-medium text-gray-600"
             >
               기업명
             </label>
             <input
-              id="apply-applicant-name"
+              id="tour-step-1-company"
               type="text"
               autoComplete="organization"
               value={applicantName}
@@ -210,7 +210,7 @@ export function AgreementModal() {
                 setApplicantName(sanitized);
                 clearCommonRequiredKey("applicantName");
               }}
-              className={`tour-step-1-company w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 nameError !== "" || commonRequiredError.applicantName === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -223,13 +223,13 @@ export function AgreementModal() {
           </div>
           <div>
             <label
-              htmlFor="apply-applicant-phone"
+              htmlFor="tour-step-1-contact"
               className="mb-1 block text-xs font-medium text-gray-600"
             >
               연락처
             </label>
             <input
-              id="apply-applicant-phone"
+              id="tour-step-1-contact"
               type="tel"
               autoComplete="tel"
               value={applicantPhone}
@@ -244,7 +244,7 @@ export function AgreementModal() {
                 setApplicantPhone(sanitized);
                 clearCommonRequiredKey("applicantPhone");
               }}
-              className={`tour-step-1-contact w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 phoneError !== "" || commonRequiredError.applicantPhone === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -257,13 +257,13 @@ export function AgreementModal() {
           </div>
           <div>
             <label
-              htmlFor="apply-applicant-email"
+              htmlFor="tour-step-1-email"
               className="mb-1 block text-xs font-medium text-gray-600"
             >
               이메일 주소
             </label>
             <input
-              id="apply-applicant-email"
+              id="tour-step-1-email"
               type="email"
               autoComplete="email"
               value={applicantEmail}
@@ -278,7 +278,7 @@ export function AgreementModal() {
                 setApplicantEmail(sanitized);
                 clearCommonRequiredKey("applicantEmail");
               }}
-              className={`tour-step-1-email w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 emailError !== "" || commonRequiredError.applicantEmail === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
@@ -300,9 +300,10 @@ export function AgreementModal() {
             닫기
           </button>
           <button
+            id="tour-step-1-submit"
             type="button"
             onClick={handleSave}
-            className="tour-step-1-submit w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
+            className="w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-2.5 text-sm font-semibold text-stone-50 transition-colors hover:bg-emerald-900 sm:w-auto"
           >
             위 내용에 동의하고 적용하기
           </button>

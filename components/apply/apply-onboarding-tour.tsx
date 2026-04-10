@@ -61,25 +61,25 @@ const step1CtaStep: Step = {
 
 const step1ModalSteps: Step[] = [
   {
-    target: ".tour-step-1-company",
+    target: "#tour-step-1-company",
     title: "1-1 · 기업명",
     content: "FDA 등록에 쓰일 정확한 영문 기업명을 입력하세요.",
     placement: "bottom",
   },
   {
-    target: ".tour-step-1-contact",
+    target: "#tour-step-1-contact",
     title: "1-2 · 연락처",
     content: "비상시에 연락 가능한 유효한 연락처를 입력하세요.",
     placement: "bottom",
   },
   {
-    target: ".tour-step-1-email",
+    target: "#tour-step-1-email",
     title: "1-3 · 이메일",
     content: "등록 완료 보고서를 받을 주요 이메일 주소입니다.",
     placement: "bottom",
   },
   {
-    target: ".tour-step-1-submit",
+    target: "#tour-step-1-submit",
     title: "1-4 · 동의",
     content: "입력을 마치셨다면, 동의하고 다음 단계로 진행하세요.",
     placement: "top",
@@ -168,8 +168,6 @@ const joyrideStyles = {
   },
 };
 
-const MODAL_FIRST_TARGET = ".tour-step-1-company";
-
 const joyrideOptionsAboveModal: Partial<Options> = {
   primaryColor: "#022c22",
   textColor: "#1c1917",
@@ -181,14 +179,10 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   showProgress: false,
   skipBeacon: true,
   buttons: ["back", "close", "primary", "skip"] as ButtonType[],
-  /** 모달·페이지 어떤 레이어보다 위 (툴팁·오버레이) */
-  zIndex: 9999,
-  /** 모달 DOM이 늦게 붙는 경우 대기 */
-  targetWaitTimeout: 8000,
-  /**
-   * react-joyride v3: 하이라이트 영역에서 입력·클릭을 막지 않음.
-   * (v2의 spotlightClicks: true 와 동일한 의도)
-   */
+  /** 동의 모달 z-[60]보다 위 */
+  zIndex: 100,
+  targetWaitTimeout: 3000,
+  /** 하이라이트 영역에서도 입력·클릭 가능 */
   blockTargetInteraction: false,
 };
 
@@ -223,8 +217,8 @@ export function ApplyOnboardingTour() {
   }, [pathname, step1Phase]);
 
   /**
-   * 동의서 모달이 열리면: Joyride를 잠시 멈춘 뒤, 모달 첫 타깃 DOM이 붙을 때까지
-   * 짧은 지연 + 폴링으로 기다린 다음에만 modal 단계로 전환 (타깃 미존재로 투어 증발 방지).
+   * 동의서 모달이 열리면: Joyride를 멈춘 뒤 200ms만 대기해 React DOM 마운트 틱 이후
+   * modal 단계로 전환하고 투어를 다시 실행합니다.
    */
   useEffect(() => {
     if (
@@ -240,60 +234,17 @@ export function ApplyOnboardingTour() {
     setRun(false);
 
     let cancelled = false;
-    let pollId: number | null = null;
-    const maxWaitMs = 8000;
-    const pollEveryMs = 80;
-    const initialDelayMs = 420;
-
-    const modalDomReady = () => {
-      if (typeof document === "undefined") return false;
-      const el = document.querySelector(MODAL_FIRST_TARGET);
-      if (!el || !(el instanceof HTMLElement)) return false;
-      if (el.getClientRects().length === 0) return false;
-      const st = window.getComputedStyle(el);
-      if (st.display === "none" || st.visibility === "hidden" || st.opacity === "0") {
-        return false;
-      }
-      return true;
-    };
-
-    const beginModalTour = () => {
+    const delayMs = 200;
+    const timerId = window.setTimeout(() => {
       if (cancelled) return;
       setStep1Phase("modal");
       setJoyrideCycle((c) => c + 1);
-      window.setTimeout(() => {
-        if (!cancelled) setRun(true);
-      }, 90);
-    };
-
-    const startedAt = performance.now();
-
-    const schedulePoll = () => {
-      if (cancelled) return;
-      if (modalDomReady()) {
-        beginModalTour();
-        return;
-      }
-      if (performance.now() - startedAt >= maxWaitMs) {
-        beginModalTour();
-        return;
-      }
-      pollId = window.setTimeout(schedulePoll, pollEveryMs);
-    };
-
-    const initialId = window.setTimeout(() => {
-      if (cancelled) return;
-      if (modalDomReady()) {
-        beginModalTour();
-      } else {
-        schedulePoll();
-      }
-    }, initialDelayMs);
+      setRun(true);
+    }, delayMs);
 
     return () => {
       cancelled = true;
-      window.clearTimeout(initialId);
-      if (pollId != null) window.clearTimeout(pollId);
+      window.clearTimeout(timerId);
     };
   }, [mounted, tutorialDone, pathname, isAgreementModalOpen, step1Phase]);
 
