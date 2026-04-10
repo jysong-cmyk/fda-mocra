@@ -20,6 +20,8 @@ type Props = {
   paymentMode?: boolean;
   /** 목록이 비었을 때 결제 링크 비활성화용 */
   paymentDisabled?: boolean;
+  /** 온보딩 등에서 주요 다음 버튼을 타깃팅할 때 */
+  nextButtonId?: string;
 };
 
 export function ApplyFooter({
@@ -33,6 +35,7 @@ export function ApplyFooter({
   nextDisabled = false,
   paymentMode = false,
   paymentDisabled = false,
+  nextButtonId,
 }: Props) {
   return (
     <footer
@@ -78,6 +81,7 @@ export function ApplyFooter({
           )
         ) : (
           <button
+            id={nextButtonId}
             type="button"
             disabled={nextDisabled}
             onClick={onNext}

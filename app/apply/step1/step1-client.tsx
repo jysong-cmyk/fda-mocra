@@ -171,13 +171,13 @@ export function Step1Client() {
 
               <div>
                 <ApplyFieldLabel
-                  htmlFor="apply-rp-name-en"
+                  htmlFor="tour-step-rp-name"
                   tooltip="미국 수출용 제품의 영문 라벨에 기재된 판매 책임 회사(RP)의 정확한 영문 명칭을 입력해 주세요."
                 >
                   영문 라벨 상 판매 기업명 (Responsible Person)
                 </ApplyFieldLabel>
                 <input
-                  id="apply-rp-name-en"
+                  id="tour-step-rp-name"
                   type="text"
                   autoComplete="name"
                   value={rpNameEn}
@@ -188,7 +188,7 @@ export function Step1Client() {
                     setRpNameEn(sanitized);
                     clearCommonRequiredKey("rpNameEn");
                   }}
-                  className={`tour-step-2 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
+                  className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
                     rpNameEnError || commonRequiredError.rpNameEn === true
                       ? invalidFieldClass
                       : normalFieldClass
@@ -204,13 +204,13 @@ export function Step1Client() {
 
               <div>
                 <ApplyFieldLabel
-                  htmlFor="apply-rp-contact"
+                  htmlFor="tour-step-rp-contact"
                   tooltip="영문 라벨 상 판매 기업(RP)의 연락처를 입력해 주세요."
                 >
                   영문 라벨 상 판매 기업 연락처 (Responsible Person 연락처)
                 </ApplyFieldLabel>
                 <input
-                  id="apply-rp-contact"
+                  id="tour-step-rp-contact"
                   type="text"
                   autoComplete="tel"
                   value={rpContact}
@@ -237,13 +237,13 @@ export function Step1Client() {
 
               <div>
                 <ApplyFieldLabel
-                  htmlFor="apply-agent-name"
+                  htmlFor="tour-step-recommender"
                   tooltip="이 웹사이트를 소개해준 당사 영업 담당자 이름을 한글로 입력해 주세요."
                 >
                   추천인(영업 담당자) 이름 (선택 사항)
                 </ApplyFieldLabel>
                 <input
-                  id="apply-agent-name"
+                  id="tour-step-recommender"
                   type="text"
                   value={agentName}
                   onChange={(e) => setAgentName(e.target.value)}
@@ -260,6 +260,7 @@ export function Step1Client() {
               showPrev={false}
               onNext={handleNext}
               nextLabel="저장하고 다음 단계로"
+              nextButtonId="tour-step-next-btn"
             />
           </div>
         </div>

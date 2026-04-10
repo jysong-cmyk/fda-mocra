@@ -62,20 +62,20 @@ const step1CtaStep: Step = {
 const step1ModalSteps: Step[] = [
   {
     target: "#tour-step-1-company",
-    title: "1-1 · 기업명",
-    content: "FDA 등록에 쓰일 정확한 영문 기업명을 입력하세요.",
+    title: "1-1 · 신청 기업명",
+    content: "Mocra 등록을 신청하시는 기업명을 한글로 입력해주세요",
     placement: "bottom",
   },
   {
     target: "#tour-step-1-contact",
-    title: "1-2 · 연락처",
-    content: "비상시에 연락 가능한 유효한 연락처를 입력하세요.",
+    title: "1-2 · 기업 연락처",
+    content: "위 기업의 연락처를 입력해 주세요.",
     placement: "bottom",
   },
   {
     target: "#tour-step-1-email",
-    title: "1-3 · 이메일",
-    content: "등록 완료 보고서를 받을 주요 이메일 주소입니다.",
+    title: "1-3 · 담당자 이메일",
+    content: "해당 기업의 이메일 주소를 입력해 주세요.",
     placement: "bottom",
   },
   {
@@ -86,13 +86,36 @@ const step1ModalSteps: Step[] = [
   },
 ];
 
-const step1RpStep: Step = {
-  target: ".tour-step-2",
-  title: "2 / 5",
-  content:
-    "FDA에 등록될 기업 및 책임자(RP) 정보를 정확히 영문으로 입력해 주세요.",
-  placement: "bottom",
-};
+/** 모달 이후 1단계 메인 폼 (RP · 추천인 · 다음) */
+const step1MainSteps: Step[] = [
+  {
+    target: "#tour-step-rp-name",
+    title: "2 · RP 영문 기업명",
+    content:
+      "미국 수출 영문 라벨에 적힌 Responsible Person(판매 책임 기업)의 정확한 영문 명칭을 입력해 주세요.",
+    placement: "bottom",
+  },
+  {
+    target: "#tour-step-rp-contact",
+    title: "3 · RP 연락처",
+    content: "영문 라벨에 표기할 RP 연락처를 입력해 주세요.",
+    placement: "bottom",
+  },
+  {
+    target: "#tour-step-recommender",
+    title: "4 · 추천인 (선택)",
+    content:
+      "영업 담당자 추천인 이름을 적으면 할인 혜택이 적용됩니다. 없으면 비워 두셔도 됩니다.",
+    placement: "bottom",
+  },
+  {
+    target: "#tour-step-next-btn",
+    title: "5 · 다음 단계",
+    content:
+      "필수 항목을 확인한 뒤, 저장하고 다음 단계로 눌러 제품 정보 입력으로 이동해 주세요.",
+    placement: "top",
+  },
+];
 
 const stepsPart2: Step[] = [
   {
@@ -186,15 +209,22 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   blockTargetInteraction: false,
 };
 
+function initialStep1Phase(): Step1Phase {
+  if (typeof window === "undefined") return "cta";
+  if (readTutorialDone()) return "cta";
+  return useApplyStore.getState().isAgreed ? "rp" : "cta";
+}
+
 export function ApplyOnboardingTour() {
   const pathname = usePathname();
   const router = useRouter();
   const isAgreementModalOpen = useApplyStore((s) => s.isAgreementModalOpen);
+  const isAgreed = useApplyStore((s) => s.isAgreed);
 
   const [mounted, setMounted] = useState(false);
   const [tutorialDone, setTutorialDone] = useState(true);
   const [run, setRun] = useState(false);
-  const [step1Phase, setStep1Phase] = useState<Step1Phase>("cta");
+  const [step1Phase, setStep1Phase] = useState<Step1Phase>(initialStep1Phase);
   const [pendingRpAfterModal, setPendingRpAfterModal] = useState(false);
   const [joyrideCycle, setJoyrideCycle] = useState(0);
 
@@ -210,11 +240,25 @@ export function ApplyOnboardingTour() {
     if (pathname === "/apply/step1") {
       if (step1Phase === "cta") return [step1CtaStep];
       if (step1Phase === "modal") return step1ModalSteps;
-      return [step1RpStep];
+      return step1MainSteps;
     }
     if (pathname === "/apply/step2") return stepsPart2;
     return [];
   }, [pathname, step1Phase]);
+
+  /** 이미 동의(신청자 정보 저장)까지 끝난 경우 CTA를 건너뛰고 메인 폼 투어부터 */
+  useEffect(() => {
+    if (
+      !mounted ||
+      tutorialDone ||
+      pathname !== "/apply/step1" ||
+      readContinueFlag()
+    ) {
+      return;
+    }
+    if (!isAgreed) return;
+    setStep1Phase((p) => (p === "cta" ? "rp" : p));
+  }, [mounted, tutorialDone, pathname, isAgreed]);
 
   /**
    * 동의서 모달이 열리면: Joyride를 멈춘 뒤 200ms만 대기해 React DOM 마운트 틱 이후
@@ -273,7 +317,10 @@ export function ApplyOnboardingTour() {
     isAgreementModalOpen,
   ]);
 
-  /** 모달 단계 중 닫기만 하고 이탈한 경우 CTA로 복귀 */
+  /**
+   * 모달 단계에서 창이 닫힌 경우: 동의 저장 완료면 RP 메인 투어로,
+   * 비동의 이탈이면 CTA로 복귀.
+   */
   useEffect(() => {
     if (
       !mounted ||
@@ -284,6 +331,14 @@ export function ApplyOnboardingTour() {
       pendingRpAfterModal
     ) {
       return;
+    }
+
+    if (useApplyStore.getState().isAgreed) {
+      setStep1Phase("rp");
+      setJoyrideCycle((c) => c + 1);
+      setRun(false);
+      const t = window.setTimeout(() => setRun(true), 220);
+      return () => window.clearTimeout(t);
     }
 
     setStep1Phase("cta");
