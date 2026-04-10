@@ -168,6 +168,8 @@ const joyrideStyles = {
   },
 };
 
+const MODAL_FIRST_TARGET = ".tour-step-1-company";
+
 const joyrideOptionsAboveModal: Partial<Options> = {
   primaryColor: "#022c22",
   textColor: "#1c1917",
@@ -179,8 +181,15 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   showProgress: false,
   skipBeacon: true,
   buttons: ["back", "close", "primary", "skip"] as ButtonType[],
-  zIndex: 75,
-  targetWaitTimeout: 4000,
+  /** 모달·페이지 어떤 레이어보다 위 (툴팁·오버레이) */
+  zIndex: 9999,
+  /** 모달 DOM이 늦게 붙는 경우 대기 */
+  targetWaitTimeout: 8000,
+  /**
+   * react-joyride v3: 하이라이트 영역에서 입력·클릭을 막지 않음.
+   * (v2의 spotlightClicks: true 와 동일한 의도)
+   */
+  blockTargetInteraction: false,
 };
 
 export function ApplyOnboardingTour() {
@@ -213,7 +222,10 @@ export function ApplyOnboardingTour() {
     return [];
   }, [pathname, step1Phase]);
 
-  /** 동의서 모달이 열리면 CTA 단계에서 모달 내부 단계로 전환 */
+  /**
+   * 동의서 모달이 열리면: Joyride를 잠시 멈춘 뒤, 모달 첫 타깃 DOM이 붙을 때까지
+   * 짧은 지연 + 폴링으로 기다린 다음에만 modal 단계로 전환 (타깃 미존재로 투어 증발 방지).
+   */
   useEffect(() => {
     if (
       !mounted ||
@@ -226,10 +238,63 @@ export function ApplyOnboardingTour() {
     if (!isAgreementModalOpen || step1Phase !== "cta") return;
 
     setRun(false);
-    setStep1Phase("modal");
-    setJoyrideCycle((c) => c + 1);
-    const t = window.setTimeout(() => setRun(true), 240);
-    return () => window.clearTimeout(t);
+
+    let cancelled = false;
+    let pollId: number | null = null;
+    const maxWaitMs = 8000;
+    const pollEveryMs = 80;
+    const initialDelayMs = 420;
+
+    const modalDomReady = () => {
+      if (typeof document === "undefined") return false;
+      const el = document.querySelector(MODAL_FIRST_TARGET);
+      if (!el || !(el instanceof HTMLElement)) return false;
+      if (el.getClientRects().length === 0) return false;
+      const st = window.getComputedStyle(el);
+      if (st.display === "none" || st.visibility === "hidden" || st.opacity === "0") {
+        return false;
+      }
+      return true;
+    };
+
+    const beginModalTour = () => {
+      if (cancelled) return;
+      setStep1Phase("modal");
+      setJoyrideCycle((c) => c + 1);
+      window.setTimeout(() => {
+        if (!cancelled) setRun(true);
+      }, 90);
+    };
+
+    const startedAt = performance.now();
+
+    const schedulePoll = () => {
+      if (cancelled) return;
+      if (modalDomReady()) {
+        beginModalTour();
+        return;
+      }
+      if (performance.now() - startedAt >= maxWaitMs) {
+        beginModalTour();
+        return;
+      }
+      pollId = window.setTimeout(schedulePoll, pollEveryMs);
+    };
+
+    const initialId = window.setTimeout(() => {
+      if (cancelled) return;
+      if (modalDomReady()) {
+        beginModalTour();
+      } else {
+        schedulePoll();
+      }
+    }, initialDelayMs);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(initialId);
+      if (pollId != null) window.clearTimeout(pollId);
+    };
   }, [mounted, tutorialDone, pathname, isAgreementModalOpen, step1Phase]);
 
   /** 모달 안내 4단계를 끝낸 뒤 모달이 닫히면 RP 단계로 */
