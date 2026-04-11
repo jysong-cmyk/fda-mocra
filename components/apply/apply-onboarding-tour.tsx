@@ -11,7 +11,7 @@ import {
   type Options,
   type Step,
 } from "react-joyride";
-import { useApplyStore } from "@/stores/apply-store";
+import { useApplyStore, type ApplyStore } from "@/stores/apply-store";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -25,6 +25,56 @@ const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
 ]);
 
 type Step1Phase = "cta" | "modal" | "rp";
+
+type SmartTourResume =
+  | { kind: "step1"; phase: Step1Phase; index: number }
+  | { kind: "step2"; index: number };
+
+type SmartStepStore = Pick<
+  ApplyStore,
+  | "isAgreed"
+  | "isAgreementModalOpen"
+  | "applicantName"
+  | "applicantPhone"
+  | "applicantEmail"
+  | "rpNameEn"
+  | "rpContact"
+  | "productNameEn"
+  | "labelFiles"
+  | "ingredientText"
+  | "aiCategoryQuery"
+>;
+
+/** useApplyStore 기준으로 첫 빈 필수 입력에 해당하는 Joyride 스텝 인덱스 계산 */
+export function calculateSmartStep(
+  pathname: string,
+  store: SmartStepStore,
+): SmartTourResume {
+  const t = (v: string | undefined) => (v ?? "").trim();
+
+  if (pathname === "/apply/step2") {
+    if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
+    const hasIngredient =
+      (store.labelFiles?.length ?? 0) > 0 || t(store.ingredientText).length > 0;
+    if (!hasIngredient) return { kind: "step2", index: 1 };
+    if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 2 };
+    return { kind: "step2", index: 2 };
+  }
+
+  if (!store.isAgreed) {
+    if (store.isAgreementModalOpen) {
+      if (!t(store.applicantName)) return { kind: "step1", phase: "modal", index: 0 };
+      if (!t(store.applicantPhone)) return { kind: "step1", phase: "modal", index: 1 };
+      if (!t(store.applicantEmail)) return { kind: "step1", phase: "modal", index: 2 };
+      return { kind: "step1", phase: "modal", index: 3 };
+    }
+    return { kind: "step1", phase: "cta", index: 0 };
+  }
+
+  if (!t(store.rpNameEn)) return { kind: "step1", phase: "rp", index: 0 };
+  if (!t(store.rpContact)) return { kind: "step1", phase: "rp", index: 1 };
+  return { kind: "step1", phase: "rp", index: 3 };
+}
 
 function readTutorialDone(): boolean {
   try {
@@ -153,7 +203,7 @@ const joyrideLocale = {
   close: "닫기",
   last: "완료",
   next: "다음",
-  skip: "건너뛰기",
+  skip: "튜토리얼 종료",
 };
 
 const joyrideStyles = {
@@ -221,6 +271,8 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   dismissKeyAction: false,
   /** 툴팁/다음 버튼으로 포커스를 가져가지 않음 (v3: 구 disableAutoFocus에 해당) */
   disableFocusTrap: true,
+  /** 타겟으로 스크롤 유지 (v3: skipScroll === false) */
+  skipScroll: false,
 };
 
 function initialStep1Phase(): Step1Phase {
@@ -241,6 +293,7 @@ export function ApplyOnboardingTour() {
   const [step1Phase, setStep1Phase] = useState<Step1Phase>(initialStep1Phase);
   const [pendingRpAfterModal, setPendingRpAfterModal] = useState(false);
   const [joyrideCycle, setJoyrideCycle] = useState(0);
+  const [joyrideStartIndex, setJoyrideStartIndex] = useState(0);
 
   const step1PhaseRef = useRef(step1Phase);
   step1PhaseRef.current = step1Phase;
@@ -318,10 +371,19 @@ export function ApplyOnboardingTour() {
       const step = stepList[state.index];
       if (!step) return;
 
+      const stepTargetStr =
+        typeof step.target === "string" ? step.target : null;
       if (
-        typeof step.target === "string" &&
-        KEYBOARD_NEXT_EXCLUDED_TARGETS.has(step.target)
+        stepTargetStr &&
+        KEYBOARD_NEXT_EXCLUDED_TARGETS.has(stepTargetStr) &&
+        e.key === "Enter"
       ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (stepTargetStr && KEYBOARD_NEXT_EXCLUDED_TARGETS.has(stepTargetStr)) {
         return;
       }
 
@@ -399,6 +461,7 @@ export function ApplyOnboardingTour() {
     const timerId = window.setTimeout(() => {
       if (cancelled) return;
       setStep1Phase("modal");
+      setJoyrideStartIndex(0);
       setJoyrideCycle((c) => c + 1);
       setRun(true);
       document.querySelector<HTMLElement>("#tour-step-1-company")?.focus({
@@ -435,6 +498,7 @@ export function ApplyOnboardingTour() {
 
     setPendingRpAfterModal(false);
     setStep1Phase("rp");
+    setJoyrideStartIndex(0);
     setJoyrideCycle((c) => c + 1);
     const t = window.setTimeout(() => setRun(true), 220);
     return () => window.clearTimeout(t);
@@ -464,6 +528,7 @@ export function ApplyOnboardingTour() {
 
     if (useApplyStore.getState().isAgreed) {
       setStep1Phase("rp");
+      setJoyrideStartIndex(0);
       setJoyrideCycle((c) => c + 1);
       setRun(false);
       const t = window.setTimeout(() => setRun(true), 220);
@@ -471,6 +536,7 @@ export function ApplyOnboardingTour() {
     }
 
     setStep1Phase("cta");
+    setJoyrideStartIndex(0);
     setJoyrideCycle((c) => c + 1);
     setRun(false);
     const t = window.setTimeout(() => setRun(true), 220);
@@ -516,6 +582,30 @@ export function ApplyOnboardingTour() {
     return () => window.clearTimeout(t);
   }, [mounted, tutorialDone, pathname]);
 
+  const handleSmartResume = useCallback(() => {
+    try {
+      localStorage.removeItem(TUTORIAL_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    setTutorialDone(false);
+    setPendingRpAfterModal(false);
+
+    if (pathname === "/apply/step2") {
+      setContinueFlag();
+    }
+
+    const smart = calculateSmartStep(pathname, useApplyStore.getState());
+    if (smart.kind === "step1") {
+      setStep1Phase(smart.phase);
+    }
+    setJoyrideStartIndex(smart.index);
+
+    setRun(false);
+    setJoyrideCycle((c) => c + 1);
+    window.setTimeout(() => setRun(true), 120);
+  }, [pathname]);
+
   const onEvent = useCallback<EventHandler>(
     (data, controls) => {
       joyrideControlsRef.current = controls;
@@ -536,6 +626,7 @@ export function ApplyOnboardingTour() {
         if (phase === "cta") {
           if (!useApplyStore.getState().isAgreementModalOpen) {
             setRun(false);
+            setJoyrideStartIndex(0);
             setJoyrideCycle((c) => c + 1);
             window.setTimeout(() => setRun(true), 120);
           }
@@ -548,6 +639,7 @@ export function ApplyOnboardingTour() {
           if (!useApplyStore.getState().isAgreementModalOpen) {
             setPendingRpAfterModal(false);
             setStep1Phase("rp");
+            setJoyrideStartIndex(0);
             setJoyrideCycle((c) => c + 1);
             window.setTimeout(() => setRun(true), 200);
           }
@@ -571,21 +663,42 @@ export function ApplyOnboardingTour() {
     [pathname, router],
   );
 
-  if (!mounted || tutorialDone || steps.length === 0) {
+  const showSmartResumeFab =
+    mounted &&
+    (pathname === "/apply/step1" || pathname === "/apply/step2") &&
+    readTutorialDone();
+  const showJoyride = mounted && !tutorialDone && steps.length > 0;
+
+  if (!showJoyride && !showSmartResumeFab) {
     return null;
   }
 
   return (
-    <Joyride
-      key={`${pathname}-${step1Phase}-${joyrideCycle}-${steps.length}`}
-      run={run}
-      steps={steps}
-      continuous
-      scrollToFirstStep
-      locale={joyrideLocale}
-      styles={joyrideStyles}
-      options={{ ...joyrideOptionsAboveModal }}
-      onEvent={onEvent}
-    />
+    <>
+      {showSmartResumeFab ? (
+        <button
+          type="button"
+          aria-label="튜토리얼 다시 시작"
+          className="fixed bottom-24 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-amber-700/40 bg-[#fffbeb] text-lg font-bold text-[#022c22] shadow-lg transition hover:bg-amber-50"
+          onClick={handleSmartResume}
+        >
+          ?
+        </button>
+      ) : null}
+      {showJoyride ? (
+        <Joyride
+          key={`${pathname}-${step1Phase}-${joyrideCycle}-${steps.length}-${joyrideStartIndex}`}
+          run={run}
+          steps={steps}
+          continuous
+          scrollToFirstStep
+          initialStepIndex={joyrideStartIndex}
+          locale={joyrideLocale}
+          styles={joyrideStyles}
+          options={{ ...joyrideOptionsAboveModal }}
+          onEvent={onEvent}
+        />
+      ) : null}
+    </>
   );
 }
