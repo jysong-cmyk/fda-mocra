@@ -30,6 +30,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -231,7 +232,7 @@ export function calculateSmartStep(
 ): SmartTourResume {
   const t = (v: string | undefined) => (v ?? "").trim();
 
-  if (pathname === "/apply/step2") {
+  if (pathname.includes("/apply/step2")) {
     if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
     if (!store.category1 || !store.category2 || !store.category3) {
       return { kind: "step2", index: 1 };
@@ -511,6 +512,8 @@ export function ApplyOnboardingTour() {
   step1PhaseRef.current = step1Phase;
 
   const joyrideControlsRef = useRef<Controls | null>(null);
+  /** 1↔2단계 전환 감지용 — step2 자동 재개가 매 렌더마다 도는 것을 막음 */
+  const tourPathRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -534,12 +537,12 @@ export function ApplyOnboardingTour() {
         };
       });
 
-    if (pathname === "/apply/step1") {
+    if (pathname.includes("/apply/step1")) {
       if (step1Phase === "cta") return wrap([step1CtaStep]);
       if (step1Phase === "modal") return wrap(step1ModalSteps);
       return wrap(step1MainSteps);
     }
-    if (pathname === "/apply/step2") return wrap(stepsPart2);
+    if (pathname.includes("/apply/step2")) return wrap(stepsPart2);
     return [];
   }, [pathname, step1Phase, inputGuardIssue]);
 
@@ -547,7 +550,7 @@ export function ApplyOnboardingTour() {
     () => ({
       back: "이전",
       last:
-        pathname === "/apply/step1" && step1Phase === "modal"
+        pathname.includes("/apply/step1") && step1Phase === "modal"
           ? "적용하기"
           : "입력하기",
       next: "다음",
@@ -685,7 +688,7 @@ export function ApplyOnboardingTour() {
     if (
       !mounted ||
       tutorialDone ||
-      pathname !== "/apply/step1" ||
+      !pathname.includes("/apply/step1") ||
       readContinueFlag()
     ) {
       return;
@@ -702,7 +705,7 @@ export function ApplyOnboardingTour() {
     if (
       !mounted ||
       tutorialDone ||
-      pathname !== "/apply/step1" ||
+      !pathname.includes("/apply/step1") ||
       readContinueFlag()
     ) {
       return;
@@ -745,7 +748,7 @@ export function ApplyOnboardingTour() {
     if (
       !mounted ||
       tutorialDone ||
-      pathname !== "/apply/step1" ||
+      !pathname.includes("/apply/step1") ||
       !pendingRpAfterModal ||
       isAgreementModalOpen
     ) {
@@ -774,7 +777,7 @@ export function ApplyOnboardingTour() {
     if (
       !mounted ||
       tutorialDone ||
-      pathname !== "/apply/step1" ||
+      !pathname.includes("/apply/step1") ||
       isAgreementModalOpen ||
       step1Phase !== "modal" ||
       pendingRpAfterModal
@@ -808,7 +811,7 @@ export function ApplyOnboardingTour() {
 
   /** 1단계 CTA / RP 구간에서 투어 시작 (모달 전용 구간은 별도 이펙트에서 처리) */
   useEffect(() => {
-    if (!mounted || tutorialDone || pathname !== "/apply/step1") {
+    if (!mounted || tutorialDone || !pathname.includes("/apply/step1")) {
       return;
     }
     if (readContinueFlag()) {
@@ -826,17 +829,71 @@ export function ApplyOnboardingTour() {
     return () => window.clearTimeout(t);
   }, [mounted, tutorialDone, pathname, step1Phase]);
 
-  useEffect(() => {
-    if (!mounted || tutorialDone || pathname !== "/apply/step2") {
+  /**
+   * 1단계 마지막에서 /apply/step2로 이동할 때 Joyride가 끊기지 않도록,
+   * 튜토리얼 미졸업(localStorage !== "true")이면 step2 대본·스마트 인덱스로 즉시 재개.
+   * tutorial_completed 인 경우에는 자동 시작하지 않음.
+   */
+  useLayoutEffect(() => {
+    if (!mounted) return;
+
+    if (!pathname.includes("/apply/step2")) {
+      tourPathRef.current = pathname;
       return;
     }
-    if (!readContinueFlag()) {
+
+    const prev = tourPathRef.current;
+
+    let storageCompleted = false;
+    try {
+      storageCompleted =
+        localStorage.getItem(TUTORIAL_STORAGE_KEY) === "true";
+    } catch {
+      storageCompleted = false;
+    }
+
+    if (storageCompleted) {
+      tourPathRef.current = pathname;
+      setTutorialDone(true);
       setRun(false);
       return;
     }
-    const t = window.setTimeout(() => setRun(true), 280);
-    return () => window.clearTimeout(t);
-  }, [mounted, tutorialDone, pathname]);
+
+    setTutorialDone(false);
+
+    const landedOnStep2 =
+      prev === null || !prev.includes("/apply/step2");
+    if (!landedOnStep2) {
+      tourPathRef.current = pathname;
+      return;
+    }
+
+    const smart = calculateSmartStep(pathname, useApplyStore.getState());
+    if (smart.kind !== "step2") {
+      tourPathRef.current = pathname;
+      return;
+    }
+
+    setInputGuardIssue(null);
+    setContinueFlag();
+    setJoyrideStartIndex(smart.index);
+    setRun(false);
+    setJoyrideCycle((c) => c + 1);
+
+    let cancelled = false;
+    const tid = window.setTimeout(() => {
+      if (!cancelled) setRun(true);
+    }, 280);
+
+    tourPathRef.current = pathname;
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(tid);
+      // React Strict Mode(개발): 동일 경로 재마운트 시에도 한 번 더 “진입”으로 인식되도록 복원
+      tourPathRef.current = prev;
+    };
+  }, [mounted, pathname]);
 
   const handleSmartResume = useCallback(() => {
     try {
@@ -848,7 +905,7 @@ export function ApplyOnboardingTour() {
     setPendingRpAfterModal(false);
     setInputGuardIssue(null);
 
-    if (pathname === "/apply/step2") {
+    if (pathname.includes("/apply/step2")) {
       setContinueFlag();
     }
 
@@ -980,7 +1037,7 @@ export function ApplyOnboardingTour() {
 
       if (data.status !== STATUS.FINISHED) return;
 
-      if (pathname === "/apply/step1") {
+      if (pathname.includes("/apply/step1")) {
         const phase = step1PhaseRef.current;
 
         if (phase === "cta") {
@@ -1013,7 +1070,7 @@ export function ApplyOnboardingTour() {
         return;
       }
 
-      if (pathname === "/apply/step2") {
+      if (pathname.includes("/apply/step2")) {
         persistApplyTutorialDone();
         setTutorialDone(true);
         setRun(false);
