@@ -1125,6 +1125,7 @@ export function Step2Client() {
                       }
                     >
                       <button
+                        id="tutorial-step-ingredient-confirm"
                         type="button"
                         disabled={
                           s.isAddingProduct ||

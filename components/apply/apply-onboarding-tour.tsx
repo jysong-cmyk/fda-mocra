@@ -46,6 +46,7 @@ import {
 const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
   "#tour-step-next-btn",
   "#tour-step-1-submit",
+  "#tutorial-step-ingredient-confirm",
   "#tour-step-2-save",
 ]);
 
@@ -62,6 +63,7 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   "#tour-step-2-labels",
   ".tour-step-3",
   ".tour-step-4",
+  "#tutorial-step-ingredient-confirm",
 ]);
 
 type InputGuardKind =
@@ -70,7 +72,8 @@ type InputGuardKind =
   | "format-email"
   | "format-fei"
   | "tour-category"
-  | "category-not-confirmed";
+  | "category-not-confirmed"
+  | "ingredient-not-confirmed";
 
 function getTourFieldValue(selector: string): string {
   try {
@@ -178,6 +181,13 @@ function evaluateInputGuard(
     }
     return { ok: true };
   }
+  if (selector === "#tutorial-step-ingredient-confirm") {
+    const st = useApplyStore.getState();
+    if (!st.isIngredientConfirmed) {
+      return { ok: false, kind: "ingredient-not-confirmed" };
+    }
+    return { ok: true };
+  }
   if (!getTourFieldValue(selector)) return { ok: false, kind: "empty" };
   return { ok: true };
 }
@@ -252,7 +262,9 @@ function appendValidationHint(
             ? "* 카테고리를 검색하여 최종 선택 및 확인해 주세요."
             : kind === "category-not-confirmed"
               ? "* 카테고리를 확인하신 후 [최종 확인] 버튼을 눌러주세요."
-              : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
+              : kind === "ingredient-not-confirmed"
+                ? "* 성분 내용을 확인하신 후 [성분표 확인] 버튼을 눌러주세요."
+                : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
   return (
     <Fragment>
       {node}
@@ -342,10 +354,13 @@ export function calculateSmartStep(
     if (store.editingId == null && store.ingredientFileMeta == null) {
       return { kind: "step2", index: 6 };
     }
-    if (!t(store.ingredientText) || !store.isIngredientConfirmed) {
+    if (!t(store.ingredientText)) {
       return { kind: "step2", index: 6 };
     }
-    return { kind: "step2", index: 7 };
+    if (!store.isIngredientConfirmed) {
+      return { kind: "step2", index: 7 };
+    }
+    return { kind: "step2", index: 8 };
   }
 
   if (!store.isAgreed) {
@@ -482,52 +497,59 @@ const step2CategoryReviewTourContent = (
 const stepsPart2: Step[] = [
   {
     target: ".tour-step-3",
-    title: "1 / 8",
+    title: "1 / 9",
     content: "화장품 영문 라벨에 있는 제품명과 동일한 명칭을 입력해 주세요.",
     placement: "bottom",
   },
   {
     target: "#apply-ai-cat",
-    title: "2 / 8",
+    title: "2 / 9",
     content: step2CategoryNameTourContent,
     placement: "bottom",
   },
   {
     target: "#apply-ai-category-search",
-    title: "3 / 8",
+    title: "3 / 9",
     content: step2AiSearchButtonTourContent,
     placement: "bottom",
   },
   {
     target: "#tour-step-2-category-review",
-    title: "4 / 8",
+    title: "4 / 9",
     content: step2CategoryReviewTourContent,
     placement: "top",
   },
   {
     target: "#apply-fei",
-    title: "5 / 8",
+    title: "5 / 9",
     content:
       "제조시설 FEI 번호(숫자 10자리)를 입력합니다. 제조사에 문의해 확인해 주세요.",
     placement: "bottom",
   },
   {
     target: "#tour-step-2-labels",
-    title: "6 / 8",
+    title: "6 / 9",
     content:
       "영문 패키지 또는 라벨 사진을 업로드해 주세요. 앞·뒷면이 모두 잘 보이도록 촬영합니다.",
     placement: "top",
   },
   {
     target: ".tour-step-4",
-    title: "7 / 8",
+    title: "7 / 9",
     content:
-      "성분표 이미지 또는 PDF를 올리면 AI가 성분명을 추출합니다. 결과를 반드시 확인·수정하고 성분표 확인까지 완료해 주세요.",
+      "성분표 이미지를 올리면 AI가 성분명을 추출합니다. 추출이 끝나면 다음 단계에서 내용을 확인해 주세요.",
+    placement: "top",
+  },
+  {
+    target: "#tutorial-step-ingredient-confirm",
+    title: "8 / 9",
+    content:
+      "AI가 추출한 성분 내용을 확인하고, 오타가 있다면 직접 수정한 뒤 [성분표 확인] 버튼을 꼭 눌러주세요.",
     placement: "top",
   },
   {
     target: "#tour-step-2-save",
-    title: "8 / 8",
+    title: "9 / 9",
     content:
       "입력을 마친 뒤 실제 화면의 「목록에 추가하기」 또는 「목록에 반영하기」 버튼을 직접 눌러 저장해 주세요.",
     placement: "top",
