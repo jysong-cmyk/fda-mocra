@@ -31,6 +31,13 @@ const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
   "#tour-step-1-submit",
 ]);
 
+/** Primary(다음) 클릭 시 실제 DOM과 동기화할 스텝 타깃 (CTA·모달 적용·RP 다음) */
+const PRIMARY_CLICK_SYNC_TARGETS = new Set<string>([
+  ".tour-step-1",
+  "#tour-step-1-submit",
+  "#tour-step-next-btn",
+]);
+
 type Step1Phase = "cta" | "modal" | "rp";
 
 type SmartTourResume =
@@ -648,10 +655,12 @@ export function ApplyOnboardingTour() {
 
       if (data.status !== STATUS.FINISHED) return;
 
-      const isLastStep = data.index === data.size - 1;
-      if (isLastStep && data.action === ACTIONS.NEXT) {
+      if (data.action === ACTIONS.NEXT) {
         const rawTarget = data.step?.target;
-        if (typeof rawTarget === "string") {
+        if (
+          typeof rawTarget === "string" &&
+          PRIMARY_CLICK_SYNC_TARGETS.has(rawTarget)
+        ) {
           try {
             document.querySelector<HTMLElement>(rawTarget)?.click();
           } catch {
