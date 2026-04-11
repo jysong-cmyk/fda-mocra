@@ -8,6 +8,13 @@ const nextConfig: NextConfig = {
    */
   serverExternalPackages: ["@supabase/supabase-js", "pdf-parse"],
   /**
+   * Vercel standalone / 파일 트레이싱 시 pdf-parse 내부 worker 등이 누락되는 것 방지.
+   * (Next 15+에서는 `experimental.outputFileTracingIncludes`가 이 최상위 키로 통합됨.)
+   */
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./node_modules/pdf-parse/**/*"],
+  },
+  /**
    * Server Actions 멀티파트 본문 한도(라벨 다중 업로드).
    * Next.js 16.2 런타임은 여전히 `experimental.serverActions.bodySizeLimit`만 적용합니다.
    * (최상위 `serverActions` 키는 현재 버전 스키마에서 거부됨.)
