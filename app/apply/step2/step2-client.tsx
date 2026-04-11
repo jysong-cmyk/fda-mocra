@@ -15,7 +15,6 @@ import {
 } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
-  FAKE_OCR_TEXT,
   pathLabelFrom,
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
@@ -32,14 +31,16 @@ type OcrReviewState = "idle" | "needs_review" | "reviewed";
 
 export function Step2Client() {
   const router = useRouter();
-  const ocrTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const productSectionRef = useRef<HTMLDivElement | null>(null);
   const cartSuccessModalPanelRef = useRef<HTMLDivElement | null>(null);
   const ingredientTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const prevOcrProcessingRef = useRef(false);
+  /** OCR fetch 중복 실행 방지(setState보다 먼저 동기적으로 막음) */
+  const ingredientOcrInFlightRef = useRef(false);
   const [cartSuccessModal, setCartSuccessModal] = useState<
     null | "add" | "edit"
   >(null);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [ocrReviewState, setOcrReviewState] = useState<OcrReviewState>("idle");
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -60,12 +61,6 @@ export function Step2Client() {
     setCartSuccessModal(null);
     router.push("/apply/step3");
   }, [router]);
-
-  useEffect(() => {
-    return () => {
-      if (ocrTimeoutRef.current != null) clearTimeout(ocrTimeoutRef.current);
-    };
-  }, []);
 
   /** OCR이 끝나 텍스트가 채워진 직후: 검토 단계(파란 강조) */
   useEffect(() => {
@@ -238,18 +233,21 @@ export function Step2Client() {
   }, []);
 
   const handleIngredientImageChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (ocrTimeoutRef.current != null) {
-        clearTimeout(ocrTimeoutRef.current);
-        ocrTimeoutRef.current = null;
-      }
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const inputEl = e.currentTarget;
+      const file = inputEl.files?.[0];
       if (!file) {
+        inputEl.value = "";
         s.setIngredientFileMeta(null);
         s.setOcrProcessing(false);
         s.setIsIngredientConfirmed(false);
         return;
       }
+      if (ingredientOcrInFlightRef.current) {
+        return;
+      }
+      ingredientOcrInFlightRef.current = true;
+      setIsOcrLoading(true);
       s.setIsIngredientConfirmed(false);
       s.setIngredientFileMeta({
         name: file.name,
@@ -258,14 +256,47 @@ export function Step2Client() {
       });
       s.clearProductFieldKey("ingredientImage");
       s.setOcrProcessing(true);
-      ocrTimeoutRef.current = setTimeout(() => {
-        ocrTimeoutRef.current = null;
+      try {
+        const fd = new FormData();
+        fd.append("image", file);
+        const res = await fetch("/api/ingredient-ocr", {
+          method: "POST",
+          body: fd,
+        });
+        const json: unknown = await res.json().catch(() => ({}));
+        const text =
+          typeof json === "object" &&
+          json !== null &&
+          "text" in json &&
+          typeof (json as { text: unknown }).text === "string"
+            ? (json as { text: string }).text
+            : "";
+        if (!res.ok) {
+          alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+          useApplyStore.getState().setIngredientFileMeta(null);
+          inputEl.value = "";
+          return;
+        }
+        if (text.trim() === "") {
+          alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+          useApplyStore.getState().setIngredientFileMeta(null);
+          inputEl.value = "";
+          return;
+        }
         const st = useApplyStore.getState();
-        st.setOcrProcessing(false);
-        st.setIngredientText(FAKE_OCR_TEXT);
+        st.setIngredientText(text);
         st.setShowIngredientTextarea(true);
         st.setIsIngredientConfirmed(false);
-      }, 2000);
+      } catch (err) {
+        console.error(err);
+        alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+        useApplyStore.getState().setIngredientFileMeta(null);
+        inputEl.value = "";
+      } finally {
+        ingredientOcrInFlightRef.current = false;
+        setIsOcrLoading(false);
+        useApplyStore.getState().setOcrProcessing(false);
+      }
     },
     [s],
   );
@@ -553,7 +584,7 @@ export function Step2Client() {
                     제품 카테고리 (<Ag>Aicra</Ag> 빠른 카테고리 찾기)
                   </span>
                 </ApplyFieldLabel>
-                <div className="tour-step-5 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                <div className="tour-step-2-ai-search tour-step-5 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <input
                     id="apply-ai-cat"
                     type="text"
@@ -825,7 +856,7 @@ export function Step2Client() {
                     accept="image/*"
                     disabled={s.isAddingProduct}
                     onChange={handleLabelImagesChange}
-                    className="block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:opacity-50"
+                    className="block w-full cursor-pointer text-sm text-zinc-600 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:opacity-50"
                   />
                 ) : (
                   <p className="text-sm text-zinc-500">
@@ -871,22 +902,26 @@ export function Step2Client() {
                   id="apply-ingredient"
                   type="file"
                   accept="image/*"
-                  disabled={s.isAddingProduct}
+                  disabled={s.isAddingProduct || isOcrLoading}
                   onChange={handleIngredientImageChange}
-                  className="tour-step-4 block w-full text-sm text-zinc-600 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:opacity-50"
+                  className="tour-step-4 block w-full cursor-pointer text-sm text-zinc-600 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                {s.ocrProcessing ? (
+                {isOcrLoading || s.ocrProcessing ? (
                   <div
-                    className="mt-3 flex items-center gap-2 text-sm text-zinc-600"
+                    className="mt-3 flex flex-col gap-2 text-sm text-zinc-600"
                     role="status"
+                    aria-live="polite"
                   >
-                    <span
-                      className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-700"
-                      aria-hidden
-                    />
-                    <span className={`font-bold text-emerald-950 ${kb}`}>
-                      성분 정보를 분석하는 중...
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-zinc-200 border-t-emerald-700"
+                        aria-hidden
+                      />
+                      <span className={`font-bold text-emerald-950 ${kb}`}>
+                        AI가 성분표를 분석하고 있습니다. 잠시만 기다려 주세요...
+                        (최대 10초 소요)
+                      </span>
+                    </div>
                   </div>
                 ) : null}
                 {s.showIngredientTextarea ? (

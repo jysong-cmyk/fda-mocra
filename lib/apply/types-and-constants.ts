@@ -5,9 +5,6 @@ export const RP_PRODUCT_NAME_REGEX = /^[a-zA-Z0-9\s.,&'()+\/\-]*$/;
 export const AI_CATEGORY_QUERY_REGEX =
   /^[a-zA-Z가-힣ㄱ-ㅎㅏ-ㅣ0-9\s/+%.,\-]*$/;
 
-export const FAKE_OCR_TEXT =
-  "Water, Glycerin, Butylene Glycol, Niacinamide...";
-
 export type AiRecommendation = {
   pathLabel: string;
   category1: string;

@@ -52,7 +52,6 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   "#tour-step-1-email",
   "#tour-step-rp-name",
   "#tour-step-rp-contact",
-  "#tour-step-2-categories",
   "#apply-fei",
   "#tour-step-2-labels",
   ".tour-step-3",
@@ -75,12 +74,11 @@ function getTourFieldValue(selector: string): string {
       }
       return "";
     }
-    if (selector === ".tour-step-5") {
+    if (
+      selector === ".tour-step-2-ai-search" ||
+      selector === ".tour-step-5"
+    ) {
       return (useApplyStore.getState().aiCategoryQuery ?? "").trim();
-    }
-    if (selector === "#tour-step-2-categories") {
-      const st = useApplyStore.getState();
-      return st.category1 && st.category2 && st.category3 ? "x" : "";
     }
     if (selector === "#apply-fei") {
       const st = useApplyStore.getState();
@@ -138,12 +136,6 @@ function evaluateInputGuard(
 
 function focusTourTargetForStep(selector: string) {
   try {
-    if (selector === "#tour-step-2-categories") {
-      document.querySelector<HTMLElement>("#apply-cat-1")?.focus({
-        preventScroll: true,
-      });
-      return;
-    }
     if (selector === "#tour-step-2-labels") {
       document.querySelector<HTMLElement>("#apply-labels")?.focus({
         preventScroll: true,
@@ -156,7 +148,7 @@ function focusTourTargetForStep(selector: string) {
       });
       return;
     }
-    if (selector === ".tour-step-5") {
+    if (selector === ".tour-step-2-ai-search" || selector === ".tour-step-5") {
       document.querySelector<HTMLElement>("#apply-ai-cat")?.focus({
         preventScroll: true,
       });
@@ -241,24 +233,24 @@ export function calculateSmartStep(
 
   if (pathname.includes("/apply/step2")) {
     if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
+    if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 1 };
     if (!store.category1 || !store.category2 || !store.category3) {
       return { kind: "step2", index: 1 };
     }
-    if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 2 };
-    if (store.feiNumber.trim().length !== 10) return { kind: "step2", index: 3 };
+    if (store.feiNumber.trim().length !== 10) return { kind: "step2", index: 2 };
     const labelsOk =
       (store.labelFiles?.length ?? 0) > 0 ||
       (store.editingId != null &&
         (store.cartLines.find((c) => c.id === store.editingId)?.labelImageUrl
           .trim() ?? "") !== "");
-    if (!labelsOk) return { kind: "step2", index: 4 };
+    if (!labelsOk) return { kind: "step2", index: 3 };
     if (store.editingId == null && store.ingredientFileMeta == null) {
-      return { kind: "step2", index: 5 };
+      return { kind: "step2", index: 4 };
     }
     if (!t(store.ingredientText) || !store.isIngredientConfirmed) {
-      return { kind: "step2", index: 5 };
+      return { kind: "step2", index: 4 };
     }
-    return { kind: "step2", index: 6 };
+    return { kind: "step2", index: 5 };
   }
 
   if (!store.isAgreed) {
@@ -366,51 +358,54 @@ const step1MainSteps: Step[] = [
   },
 ];
 
+const step2CategoryAiTourContent = (
+  <Fragment>
+    세럼, 토너 등과 같이 제품의 분류명을 적고 검색 버튼을 눌러주세요.
+    <br />
+    <br />
+    AI가 알맞은 카테고리를 자동으로 찾아줍니다. 검색된 카테고리를 확인하시고
+    이상이 없다면 다음 단계로 진행해 주시고, 수정이 필요하다면 아래 항목을
+    직접 변경해 주세요.
+  </Fragment>
+);
+
 const stepsPart2: Step[] = [
   {
     target: ".tour-step-3",
-    title: "1 / 7",
-    content: "화장품의 공식 영문 제품명과 브랜드를 적는 곳입니다.",
+    title: "1 / 6",
+    content: "화장품 영문 라벨에 있는 제품명과 동일한 명칭을 입력해 주세요.",
     placement: "bottom",
   },
   {
-    target: "#tour-step-2-categories",
-    title: "2 / 7",
-    content:
-      "FDA Cosmetics Direct 기준 1·2·3단계 카테고리를 순서대로 모두 선택해 주세요.",
-    placement: "bottom",
-  },
-  {
-    target: ".tour-step-5",
-    title: "3 / 7",
-    content:
-      "제품 특징(예: 수분크림)을 입력하고 검색을 누르면, AI가 카테고리 후보를 찾아줍니다. 필요 없으면 비워 두고 다음으로 이동할 수 있습니다.",
+    target: ".tour-step-2-ai-search",
+    title: "2 / 6",
+    content: step2CategoryAiTourContent,
     placement: "bottom",
   },
   {
     target: "#apply-fei",
-    title: "4 / 7",
+    title: "3 / 6",
     content:
       "제조시설 FEI 번호(숫자 10자리)를 입력합니다. 제조사에 문의해 확인해 주세요.",
     placement: "bottom",
   },
   {
     target: "#tour-step-2-labels",
-    title: "5 / 7",
+    title: "4 / 6",
     content:
       "영문 패키지 또는 라벨 사진을 업로드해 주세요. 앞·뒷면이 모두 잘 보이도록 촬영합니다.",
     placement: "top",
   },
   {
     target: ".tour-step-4",
-    title: "6 / 7",
+    title: "5 / 6",
     content:
       "성분표 이미지를 올리면 AI가 영문 성분명을 추출합니다. 결과를 반드시 확인·수정하고 성분표 확인까지 완료해 주세요.",
     placement: "top",
   },
   {
     target: "#tour-step-2-save",
-    title: "7 / 7",
+    title: "6 / 6",
     content:
       "입력을 마친 뒤 실제 화면의 「목록에 추가하기」 또는 「목록에 반영하기」 버튼을 직접 눌러 저장해 주세요.",
     placement: "top",
@@ -1045,6 +1040,18 @@ export function ApplyOnboardingTour() {
   const onEvent = useCallback<EventHandler>(
     (data, controls) => {
       joyrideControlsRef.current = controls;
+
+      if (data.type === EVENTS.STEP_AFTER && pathname.includes("/apply/step2")) {
+        const t = data.step.target;
+        const sel = typeof t === "string" ? t : null;
+        if (sel != null && sel !== "") {
+          window.requestAnimationFrame(() => {
+            focusTourTargetForStep(sel);
+          });
+        }
+        return;
+      }
+
       if (data.type !== EVENTS.TOUR_STATUS) return;
 
       if (data.status === STATUS.SKIPPED) {
