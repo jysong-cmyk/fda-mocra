@@ -1071,7 +1071,10 @@ export function Step2Client() {
                   </div>
                 ) : null}
                 {s.showIngredientTextarea ? (
-                  <div className="mt-3">
+                  <div
+                    id="tutorial-step-ingredient-review-area"
+                    className="mt-3"
+                  >
                     <label
                       htmlFor="apply-ingredient-text"
                       className="mb-1.5 block text-xs font-medium text-zinc-500"
@@ -1125,7 +1128,6 @@ export function Step2Client() {
                       }
                     >
                       <button
-                        id="tutorial-step-ingredient-confirm"
                         type="button"
                         disabled={
                           s.isAddingProduct ||

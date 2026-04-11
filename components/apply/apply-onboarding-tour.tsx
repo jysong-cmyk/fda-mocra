@@ -46,7 +46,7 @@ import {
 const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
   "#tour-step-next-btn",
   "#tour-step-1-submit",
-  "#tutorial-step-ingredient-confirm",
+  "#tutorial-step-ingredient-review-area",
   "#tour-step-2-save",
 ]);
 
@@ -63,7 +63,7 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   "#tour-step-2-labels",
   ".tour-step-3",
   ".tour-step-4",
-  "#tutorial-step-ingredient-confirm",
+  "#tutorial-step-ingredient-review-area",
 ]);
 
 type InputGuardKind =
@@ -181,7 +181,7 @@ function evaluateInputGuard(
     }
     return { ok: true };
   }
-  if (selector === "#tutorial-step-ingredient-confirm") {
+  if (selector === "#tutorial-step-ingredient-review-area") {
     const st = useApplyStore.getState();
     if (!st.isIngredientConfirmed) {
       return { ok: false, kind: "ingredient-not-confirmed" };
@@ -541,12 +541,15 @@ const stepsPart2: Step[] = [
     placement: "top",
   },
   {
-    target: "#tutorial-step-ingredient-confirm",
+    target: "#tutorial-step-ingredient-review-area",
     title: "8 / 9",
     content:
       "AI가 추출한 성분 내용을 확인하고, 오타가 있다면 직접 수정한 뒤 [성분표 확인] 버튼을 꼭 눌러주세요.",
     placement: "top",
-  },
+    blockTargetInteraction: false,
+    // react-joyride v3: 스포트라이트 안 클릭 허용. (v2 이름 호환)
+    spotlightClicks: true,
+  } as Step,
   {
     target: "#tour-step-2-save",
     title: "9 / 9",
