@@ -609,6 +609,47 @@ export type FdaCategoryPath = {
   category3: string;
 };
 
+/**
+ * FDA 트리 기준으로 스토어에 담긴 값이 “선택 가능한 마지막 depth”까지 채워졌는지 판별.
+ * - 대분류(L1)에 중분류(L2)가 없으면 L1만 있으면 완료.
+ * - 중분류(L2)에 소분류(L3) 목록이 없으면 L2까지면 완료.
+ * - 소분류 옵션이 있으면(대부분 NA 포함) 그 중 하나를 골라야 완료.
+ * 현재 데이터는 모든 L1에 L2가 있고, 모든 L2에 L3 자식이 하나 이상 있음.
+ */
+export function isFdaCategorySelectionComplete(
+  category1: string,
+  category2: string,
+  category3: string,
+): boolean {
+  const trim = (s: string) => (s ?? "").trim();
+  const v1 = trim(category1);
+  if (v1 === "") return false;
+
+  const l1 = fdaCategories.find((n) => n.value === v1);
+  if (!l1) return false;
+
+  const l2List = l1.children ?? [];
+  if (l2List.length === 0) {
+    return true;
+  }
+
+  const v2 = trim(category2);
+  if (v2 === "") return false;
+
+  const l2 = l2List.find((n) => n.value === v2);
+  if (!l2) return false;
+
+  const l3List = l2.children ?? [];
+  if (l3List.length === 0) {
+    return true;
+  }
+
+  const v3 = trim(category3);
+  if (v3 === "") return false;
+
+  return l3List.some((n) => n.value === v3);
+}
+
 export function getFdaCategoryPaths(): FdaCategoryPath[] {
   const paths: FdaCategoryPath[] = [];
   for (const l1 of fdaCategories) {

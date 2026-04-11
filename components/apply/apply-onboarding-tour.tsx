@@ -15,7 +15,9 @@ import {
 import {
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
+  isFeiNumberValid,
 } from "@/lib/apply/applicant-contact-validation";
+import { isFdaCategorySelectionComplete } from "@/app/fdaCategories";
 import {
   APPLY_TUTORIAL_CONTINUE_SESSION_KEY,
   APPLY_TUTORIAL_RESUME_EVENT,
@@ -52,13 +54,20 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   "#tour-step-1-email",
   "#tour-step-rp-name",
   "#tour-step-rp-contact",
+  "#apply-ai-cat",
+  "#tour-step-2-ai-result",
   "#apply-fei",
   "#tour-step-2-labels",
   ".tour-step-3",
   ".tour-step-4",
 ]);
 
-type InputGuardKind = "empty" | "format-phone" | "format-email";
+type InputGuardKind =
+  | "empty"
+  | "format-phone"
+  | "format-email"
+  | "format-fei"
+  | "tour-category";
 
 function getTourFieldValue(selector: string): string {
   try {
@@ -74,15 +83,22 @@ function getTourFieldValue(selector: string): string {
       }
       return "";
     }
-    if (
-      selector === ".tour-step-2-ai-search" ||
-      selector === ".tour-step-5"
-    ) {
+    if (selector === "#apply-ai-cat") {
       return (useApplyStore.getState().aiCategoryQuery ?? "").trim();
+    }
+    if (selector === "#tour-step-2-ai-result") {
+      const st = useApplyStore.getState();
+      return isFdaCategorySelectionComplete(
+        st.category1,
+        st.category2,
+        st.category3,
+      )
+        ? "x"
+        : "";
     }
     if (selector === "#apply-fei") {
       const st = useApplyStore.getState();
-      return st.feiNumber.trim().length === 10 ? "x" : "";
+      return isFeiNumberValid(st.feiNumber) ? "x" : "";
     }
     if (selector === "#tour-step-2-labels") {
       const st = useApplyStore.getState();
@@ -130,12 +146,27 @@ function evaluateInputGuard(
       return { ok: false, kind: "format-email" };
     return { ok: true };
   }
+  if (selector === "#apply-ai-cat") {
+    if (!getTourFieldValue(selector)) return { ok: false, kind: "empty" };
+    return { ok: true };
+  }
+  if (selector === "#apply-fei") {
+    const v = useApplyStore.getState().feiNumber.trim();
+    if (!v) return { ok: false, kind: "empty" };
+    if (!isFeiNumberValid(v)) return { ok: false, kind: "format-fei" };
+    return { ok: true };
+  }
+  if (selector === "#tour-step-2-ai-result") {
+    if (!getTourFieldValue(selector))
+      return { ok: false, kind: "tour-category" };
+    return { ok: true };
+  }
   if (!getTourFieldValue(selector)) return { ok: false, kind: "empty" };
   return { ok: true };
 }
 
 const TOUR_DEEP_FOCUSABLE =
-  "input:not([disabled]), textarea:not([disabled])";
+  "input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])";
 
 /**
  * Joyride 스텝 타겟에 포커스: 타겟이 input/textarea면 직접, 래퍼면 내부 첫 활성 입력에 포커스.
@@ -156,11 +187,27 @@ function focusTourTargetForStep(selector: string) {
       return;
     }
 
-    root
-      .querySelector<HTMLInputElement | HTMLTextAreaElement>(
-        TOUR_DEEP_FOCUSABLE,
-      )
-      ?.focus({ preventScroll: true });
+    if (root instanceof HTMLButtonElement && !root.disabled) {
+      root.focus({ preventScroll: true });
+      return;
+    }
+
+    if (root instanceof HTMLSelectElement && !root.disabled) {
+      root.focus({ preventScroll: true });
+      return;
+    }
+
+    const inner = root.querySelector<HTMLElement>(TOUR_DEEP_FOCUSABLE);
+    if (
+      inner instanceof HTMLInputElement ||
+      inner instanceof HTMLTextAreaElement ||
+      inner instanceof HTMLButtonElement ||
+      inner instanceof HTMLSelectElement
+    ) {
+      if (!inner.disabled) {
+        inner.focus({ preventScroll: true });
+      }
+    }
   } catch {
     /* ignore */
   }
@@ -182,7 +229,11 @@ function appendValidationHint(
       ? "* 양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-...)"
       : kind === "format-email"
         ? "* 양식에 맞춰 입력해 주세요. (예: example@email.com)"
-        : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
+        : kind === "format-fei"
+          ? "* 제조사 FEI 번호는 숫자 10자리로 입력해 주세요."
+          : kind === "tour-category"
+            ? "* 카테고리를 검색하여 최종 선택 및 확인해 주세요."
+            : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
   return (
     <Fragment>
       {node}
@@ -225,6 +276,7 @@ type SmartStepStore = Pick<
   | "ingredientFileMeta"
   | "isIngredientConfirmed"
   | "aiCategoryQuery"
+  | "aiRecommendation"
   | "editingId"
   | "cartLines"
 >;
@@ -239,23 +291,30 @@ export function calculateSmartStep(
   if (pathname.includes("/apply/step2")) {
     if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
     if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 1 };
-    if (!store.category1 || !store.category2 || !store.category3) {
-      return { kind: "step2", index: 1 };
+    if (
+      !isFdaCategorySelectionComplete(
+        store.category1,
+        store.category2,
+        store.category3,
+      )
+    ) {
+      if (store.aiRecommendation != null) return { kind: "step2", index: 3 };
+      return { kind: "step2", index: 2 };
     }
-    if (store.feiNumber.trim().length !== 10) return { kind: "step2", index: 2 };
+    if (!isFeiNumberValid(store.feiNumber.trim())) return { kind: "step2", index: 4 };
     const labelsOk =
       (store.labelFiles?.length ?? 0) > 0 ||
       (store.editingId != null &&
         (store.cartLines.find((c) => c.id === store.editingId)?.labelImageUrl
           .trim() ?? "") !== "");
-    if (!labelsOk) return { kind: "step2", index: 3 };
+    if (!labelsOk) return { kind: "step2", index: 5 };
     if (store.editingId == null && store.ingredientFileMeta == null) {
-      return { kind: "step2", index: 4 };
+      return { kind: "step2", index: 6 };
     }
     if (!t(store.ingredientText) || !store.isIngredientConfirmed) {
-      return { kind: "step2", index: 4 };
+      return { kind: "step2", index: 6 };
     }
-    return { kind: "step2", index: 5 };
+    return { kind: "step2", index: 7 };
   }
 
   if (!store.isAgreed) {
@@ -363,54 +422,77 @@ const step1MainSteps: Step[] = [
   },
 ];
 
-const step2CategoryAiTourContent = (
+const step2CategoryNameTourContent = (
   <Fragment>
-    세럼, 토너 등과 같이 제품의 분류명을 적고 검색 버튼을 눌러주세요.
-    <br />
-    <br />
-    AI가 알맞은 카테고리를 자동으로 찾아줍니다. 검색된 카테고리를 확인하시고
-    이상이 없다면 다음 단계로 진행해 주시고, 수정이 필요하다면 아래 항목을
-    직접 변경해 주세요.
+    세럼, 토너 등 제품 분류명을 입력해 주세요. 입력 후 Enter·Tab 또는「다음」을
+    누르면 「검색」버튼 단계로 이동합니다.
+  </Fragment>
+);
+
+const step2AiSearchButtonTourContent = (
+  <Fragment>
+    {
+      "입력하신 분류명을 바탕으로 카테고리를 찾으려면 '검색' 버튼을 눌러주세요."
+    }
+  </Fragment>
+);
+
+const step2AiResultTourContent = (
+  <Fragment>
+    AI가 검색한 카테고리가 맞는지 확인해 주세요. 이상이 없다면 그대로 진행해
+    주시고, 수정을 원하시면 아래 카테고리 메뉴에서 직접 변경할 수 있습니다.
   </Fragment>
 );
 
 const stepsPart2: Step[] = [
   {
     target: ".tour-step-3",
-    title: "1 / 6",
+    title: "1 / 8",
     content: "화장품 영문 라벨에 있는 제품명과 동일한 명칭을 입력해 주세요.",
     placement: "bottom",
   },
   {
-    target: ".tour-step-2-ai-search",
-    title: "2 / 6",
-    content: step2CategoryAiTourContent,
+    target: "#apply-ai-cat",
+    title: "2 / 8",
+    content: step2CategoryNameTourContent,
+    placement: "bottom",
+  },
+  {
+    target: "#apply-ai-category-search",
+    title: "3 / 8",
+    content: step2AiSearchButtonTourContent,
+    placement: "bottom",
+  },
+  {
+    target: "#tour-step-2-ai-result",
+    title: "4 / 8",
+    content: step2AiResultTourContent,
     placement: "bottom",
   },
   {
     target: "#apply-fei",
-    title: "3 / 6",
+    title: "5 / 8",
     content:
       "제조시설 FEI 번호(숫자 10자리)를 입력합니다. 제조사에 문의해 확인해 주세요.",
     placement: "bottom",
   },
   {
     target: "#tour-step-2-labels",
-    title: "4 / 6",
+    title: "6 / 8",
     content:
       "영문 패키지 또는 라벨 사진을 업로드해 주세요. 앞·뒷면이 모두 잘 보이도록 촬영합니다.",
     placement: "top",
   },
   {
     target: ".tour-step-4",
-    title: "5 / 6",
+    title: "7 / 8",
     content:
       "성분표 이미지를 올리면 AI가 영문 성분명을 추출합니다. 결과를 반드시 확인·수정하고 성분표 확인까지 완료해 주세요.",
     placement: "top",
   },
   {
     target: "#tour-step-2-save",
-    title: "6 / 6",
+    title: "8 / 8",
     content:
       "입력을 마친 뒤 실제 화면의 「목록에 추가하기」 또는 「목록에 반영하기」 버튼을 직접 눌러 저장해 주세요.",
     placement: "top",
@@ -687,8 +769,13 @@ export function ApplyOnboardingTour() {
 
       const focusDelayMs = 75;
       const tid = window.setTimeout(() => {
-        const nextEl = resolveTargetEl(nextStep.target);
-        nextEl?.focus({ preventScroll: true });
+        const nt = nextStep.target;
+        if (typeof nt === "string" && nt !== "") {
+          focusTourTargetForStep(nt);
+        } else {
+          const nextEl = resolveTargetEl(nt);
+          nextEl?.focus({ preventScroll: true });
+        }
       }, focusDelayMs);
       pendingFocusTimeouts.push(tid as number);
     };

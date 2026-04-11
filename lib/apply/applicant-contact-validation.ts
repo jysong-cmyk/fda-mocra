@@ -15,3 +15,10 @@ export function isApplicantPhoneFormatValid(phone: string): boolean {
 export function isApplicantEmailFormatValid(email: string): boolean {
   return APPLICANT_EMAIL_REGEX.test(email.trim());
 }
+
+/** 제조시설 FEI: 숫자 정확히 10자리만 허용 */
+export const FEI_NUMBER_REGEX = /^\d{10}$/;
+
+export function isFeiNumberValid(fei: string): boolean {
+  return FEI_NUMBER_REGEX.test(fei.trim());
+}

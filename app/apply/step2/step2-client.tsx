@@ -605,6 +605,7 @@ export function Step2Client() {
                     placeholder="예: 토너, 수분크림…"
                   />
                   <button
+                    id="apply-ai-category-search"
                     type="button"
                     onClick={() => void handleAiSearchClick()}
                     disabled={s.aiSearchLoading || s.isAddingProduct}
@@ -628,16 +629,22 @@ export function Step2Client() {
                     특수기호는 제한됩니다.
                   </p>
                 ) : null}
-                {s.aiSearchLoading ||
-                s.aiRecommendation != null ||
-                searchError != null ? (
-                  <div
-                    className={`mt-3 flex min-h-[7.5rem] flex-col rounded-lg border border-amber-100 bg-stone-50 px-3 py-2.5 text-sm text-zinc-800 ${
-                      s.aiSearchLoading || searchError != null
+                <div
+                  id="tour-step-2-ai-result"
+                  className={`mt-3 flex min-h-[7.5rem] flex-col rounded-lg border border-amber-100 bg-stone-50 px-3 py-2.5 text-sm text-zinc-800 ${
+                    s.aiSearchLoading ||
+                    s.aiRecommendation != null ||
+                    searchError != null
+                      ? s.aiSearchLoading || searchError != null
                         ? "items-center justify-center"
                         : ""
-                    }`}
-                  >
+                      : "items-center justify-center"
+                  }`}
+                >
+                  {s.aiSearchLoading ||
+                  s.aiRecommendation != null ||
+                  searchError != null ? (
+                    <>
                     {s.aiSearchLoading ? (
                       <div
                         className="flex flex-col items-center justify-center gap-2"
@@ -700,8 +707,13 @@ export function Step2Client() {
                         </button>
                       </>
                     ) : null}
-                  </div>
-                ) : null}
+                    </>
+                  ) : (
+                    <p className="max-w-md text-center text-sm text-zinc-500">
+                      분류명을 입력한 뒤 「검색」을 누르면 여기에 AI 추천이 표시됩니다.
+                    </p>
+                  )}
+                </div>
 
                 <div
                   id="tour-step-2-categories"
@@ -802,6 +814,7 @@ export function Step2Client() {
                 </label>
                 <input
                   id="apply-fei"
+                  type="text"
                   inputMode="numeric"
                   maxLength={10}
                   value={s.feiNumber}
@@ -809,9 +822,9 @@ export function Step2Client() {
                     const raw = e.target.value;
                     const digitsOnly = raw.replace(/[^0-9]/g, "");
                     const sanitized = digitsOnly.slice(0, 10);
-                    if (raw !== digitsOnly) {
+                    if (/[^0-9]/.test(raw)) {
                       s.setFeiError("FEI 번호는 숫자만 입력 가능합니다.");
-                    } else if (raw.length > 10) {
+                    } else if (digitsOnly.length > 10) {
                       s.setFeiError("FEI 번호는 10자리까지만 입력 가능합니다.");
                     } else {
                       s.setFeiError("");
