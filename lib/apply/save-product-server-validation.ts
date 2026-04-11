@@ -188,7 +188,7 @@ export function validateApplyProductFormServer(
 
   if (opts.isInsert) {
     if (!opts.hasIngredientImageMeta) {
-      return { ok: false, error: "성분표 이미지를 업로드해 주세요." };
+      return { ok: false, error: "성분표 파일(PNG, JPEG, JPG, PDF)을 업로드해 주세요." };
     }
     if (opts.labelFileCount === 0) {
       return { ok: false, error: "영문 패키지(라벨) 이미지를 업로드해 주세요." };

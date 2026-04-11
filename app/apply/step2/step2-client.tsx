@@ -15,6 +15,10 @@ import {
 } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
+  INGREDIENT_FILE_ACCEPT_ATTR,
+  isIngredientUploadClientAllowed,
+  MAX_INGREDIENT_FILE_BYTES,
+  MAX_INGREDIENT_FILE_SIZE_MB,
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
 import {
@@ -254,6 +258,18 @@ export function Step2Client() {
         s.setIsIngredientConfirmed(false);
         return;
       }
+      if (file.size > MAX_INGREDIENT_FILE_BYTES) {
+        alert(
+          `파일 용량이 너무 큽니다. ${MAX_INGREDIENT_FILE_SIZE_MB}MB 이하의 파일만 업로드 가능합니다.`,
+        );
+        inputEl.value = "";
+        return;
+      }
+      if (!isIngredientUploadClientAllowed(file)) {
+        alert("PNG, JPEG, JPG, PDF 파일만 업로드할 수 있습니다.");
+        inputEl.value = "";
+        return;
+      }
       if (ingredientOcrInFlightRef.current) {
         return;
       }
@@ -283,13 +299,24 @@ export function Step2Client() {
             ? (json as { text: string }).text
             : "";
         if (!res.ok) {
-          alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+          const errMsg =
+            typeof json === "object" &&
+            json !== null &&
+            "error" in json &&
+            typeof (json as { error: unknown }).error === "string"
+              ? (json as { error: string }).error
+              : null;
+          alert(
+            errMsg != null && errMsg.trim() !== ""
+              ? errMsg
+              : "성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.",
+          );
           useApplyStore.getState().setIngredientFileMeta(null);
           inputEl.value = "";
           return;
         }
         if (text.trim() === "") {
-          alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+          alert("성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.");
           useApplyStore.getState().setIngredientFileMeta(null);
           inputEl.value = "";
           return;
@@ -300,7 +327,7 @@ export function Step2Client() {
         st.setIsIngredientConfirmed(false);
       } catch (err) {
         console.error(err);
-        alert("이미지 분석에 실패했습니다. 다시 시도해 주세요.");
+        alert("성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.");
         useApplyStore.getState().setIngredientFileMeta(null);
         inputEl.value = "";
       } finally {
@@ -945,18 +972,21 @@ export function Step2Client() {
               >
                 <ApplyFieldLabel
                   htmlFor="apply-ingredient"
-                  tooltip="성분표 이미지를 업로드하면 분석 결과가 표시됩니다. 반드시 확인·수정해 주세요."
+                  tooltip="성분표 이미지 또는 PDF를 업로드하면 분석 결과가 표시됩니다. 반드시 확인·수정해 주세요."
                 >
-                  성분표 이미지 (Aicra 인텔리전스)
+                  성분표 파일 (Aicra 인텔리전스)
                 </ApplyFieldLabel>
                 <input
                   id="apply-ingredient"
                   type="file"
-                  accept="image/*"
+                  accept={INGREDIENT_FILE_ACCEPT_ATTR}
                   disabled={s.isAddingProduct || isOcrLoading}
                   onChange={handleIngredientImageChange}
                   className="tour-step-4 block w-full cursor-pointer text-sm text-zinc-600 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                 />
+                <p className="mt-1 text-xs text-zinc-500">
+                  PNG, JPEG, JPG, PDF (최대 {MAX_INGREDIENT_FILE_SIZE_MB}MB)
+                </p>
                 {isOcrLoading || s.ocrProcessing ? (
                   <div
                     className="mt-3 flex flex-col gap-2 text-sm text-zinc-600"
@@ -969,7 +999,7 @@ export function Step2Client() {
                         aria-hidden
                       />
                       <span className={`font-bold text-emerald-950 ${kb}`}>
-                        AI가 성분표를 분석하고 있습니다. 잠시만 기다려 주세요...
+                        AI가 성분표 파일을 분석하고 있습니다. 잠시만 기다려 주세요...
                         (최대 10초 소요)
                       </span>
                     </div>
