@@ -118,6 +118,13 @@ function evaluateInputGuard(
       return { ok: false, kind: "format-phone" };
     return { ok: true };
   }
+  if (selector === "#tour-step-rp-contact") {
+    const v = getTourFieldValue(selector);
+    if (!v) return { ok: false, kind: "empty" };
+    if (!isApplicantPhoneFormatValid(v))
+      return { ok: false, kind: "format-phone" };
+    return { ok: true };
+  }
   if (selector === "#tour-step-1-email") {
     const v = getTourFieldValue(selector);
     if (!v) return { ok: false, kind: "empty" };
@@ -649,6 +656,18 @@ export function ApplyOnboardingTour() {
           focusTourTargetForStep(stepTargetStr);
           if (e.key === "Enter") {
             e.preventDefault();
+          }
+          if (e.key === "Tab") {
+            e.preventDefault();
+            e.stopPropagation();
+            const t = e.target;
+            const keepFocus =
+              t instanceof HTMLElement
+                ? t
+                : active instanceof HTMLElement
+                  ? active
+                  : null;
+            keepFocus?.focus({ preventScroll: true });
           }
           return;
         }
