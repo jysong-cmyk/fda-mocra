@@ -1,5 +1,4 @@
 import { INGREDIENT_UPLOAD_MIME_WHITELIST } from "@/lib/apply/types-and-constants";
-import { PDFParse } from "pdf-parse";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -62,16 +61,6 @@ function normalizeModelIngredientOutput(raw: string): string {
   s = s.replace(/\s*,\s*/g, ", ");
   s = s.replace(/,{2,}/g, ", ");
   return s.replace(/\s{2,}/g, " ").trim();
-}
-
-async function extractPdfPlainText(buf: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buf });
-  try {
-    const result = await parser.getText({ first: PDF_PARSE_MAX_PAGES });
-    return result.text.replace(/\0/g, "").trim();
-  } finally {
-    await parser.destroy().catch(() => {});
-  }
 }
 
 async function openaiExtractFromImage(
@@ -209,7 +198,32 @@ export async function POST(request: Request) {
       if (effectiveMime === "application/pdf") {
         let pdfText: string;
         try {
-          pdfText = await extractPdfPlainText(buf);
+          // pdf-parse / pdfjs가 브라우저 전역을 기대하는 경로 대비 — 모듈은 PDF 분기에서만 동적 로드
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const g = globalThis as any;
+          if (typeof g.DOMMatrix === "undefined") {
+            g.DOMMatrix = class DOMMatrix {};
+          }
+          if (typeof g.ImageData === "undefined") {
+            g.ImageData = class ImageData {};
+          }
+
+          const pdfParseModule = await import("pdf-parse");
+          const PDFParse =
+            pdfParseModule.PDFParse ??
+            (pdfParseModule as { default?: typeof pdfParseModule }).default;
+
+          if (PDFParse == null || typeof PDFParse !== "function") {
+            throw new Error("pdf-parse: PDFParse를 불러오지 못했습니다.");
+          }
+
+          const parser = new PDFParse({ data: buf });
+          try {
+            const result = await parser.getText({ first: PDF_PARSE_MAX_PAGES });
+            pdfText = result.text.replace(/\0/g, "").trim();
+          } finally {
+            await parser.destroy().catch(() => {});
+          }
         } catch (e) {
           console.error("pdf-parse failed", e);
           return NextResponse.json(
