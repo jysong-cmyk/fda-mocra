@@ -13,9 +13,14 @@ import {
   type TooltipRenderProps,
 } from "react-joyride";
 import {
+  isApplicantEmailFormatValid,
+  isApplicantPhoneFormatValid,
+} from "@/lib/apply/applicant-contact-validation";
+import {
+  APPLY_TUTORIAL_CONTINUE_SESSION_KEY,
   APPLY_TUTORIAL_RESUME_EVENT,
-  dispatchTutorialCompleted,
   dispatchTutorialRestarted,
+  persistApplyTutorialDone,
   readTutorialDoneFromStorage,
   TUTORIAL_STORAGE_KEY,
 } from "@/lib/apply/tutorial-constants";
@@ -32,12 +37,11 @@ import {
   type ReactNode,
 } from "react";
 
-const CONTINUE_SESSION_KEY = "aicra_apply_tour_continue";
-
 /** Tab/Enter로 자동 Next 하지 않는 스텝 (v3: overlay/ESC는 overlayClickAction·dismissKeyAction 사용) */
 const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
   "#tour-step-next-btn",
   "#tour-step-1-submit",
+  "#tour-step-2-save",
 ]);
 
 /** Primary(다음)/Tab·Enter 전 값 검사 대상 (선택 추천인 제외) */
@@ -47,25 +51,48 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   "#tour-step-1-email",
   "#tour-step-rp-name",
   "#tour-step-rp-contact",
+  "#tour-step-2-categories",
+  "#apply-fei",
+  "#tour-step-2-labels",
   ".tour-step-3",
   ".tour-step-4",
-  ".tour-step-5",
 ]);
+
+type InputGuardKind = "empty" | "format";
 
 function getTourFieldValue(selector: string): string {
   try {
     if (selector === ".tour-step-4") {
       const st = useApplyStore.getState();
-      if ((st.labelFiles?.length ?? 0) > 0) return "x";
       if ((st.ingredientText ?? "").trim() !== "") return "x";
-      const fileInput = document.querySelector<HTMLInputElement>(".tour-step-4");
-      if (fileInput?.type === "file" && (fileInput.files?.length ?? 0) > 0) {
-        return "x";
+      if (st.ingredientFileMeta != null) return "x";
+      const ing = document.querySelector<HTMLInputElement>("#apply-ingredient");
+      if (ing?.type === "file" && (ing.files?.length ?? 0) > 0) return "x";
+      if (st.editingId != null) {
+        const line = st.cartLines.find((c) => c.id === st.editingId);
+        if (line && line.ingredientText.trim() !== "") return "x";
       }
       return "";
     }
     if (selector === ".tour-step-5") {
       return (useApplyStore.getState().aiCategoryQuery ?? "").trim();
+    }
+    if (selector === "#tour-step-2-categories") {
+      const st = useApplyStore.getState();
+      return st.category1 && st.category2 && st.category3 ? "x" : "";
+    }
+    if (selector === "#apply-fei") {
+      const st = useApplyStore.getState();
+      return st.feiNumber.trim().length === 10 ? "x" : "";
+    }
+    if (selector === "#tour-step-2-labels") {
+      const st = useApplyStore.getState();
+      if ((st.labelFiles?.length ?? 0) > 0) return "x";
+      if (st.editingId != null) {
+        const line = st.cartLines.find((c) => c.id === st.editingId);
+        if (line && line.labelImageUrl.trim() !== "") return "x";
+      }
+      return "";
     }
     const el = document.querySelector(selector);
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
@@ -80,8 +107,45 @@ function getTourFieldValue(selector: string): string {
   return "";
 }
 
+function evaluateInputGuard(
+  selector: string,
+): { ok: true } | { ok: false; kind: InputGuardKind } {
+  if (selector === "#tour-step-1-contact") {
+    const v = getTourFieldValue(selector);
+    if (!v) return { ok: false, kind: "empty" };
+    if (!isApplicantPhoneFormatValid(v)) return { ok: false, kind: "format" };
+    return { ok: true };
+  }
+  if (selector === "#tour-step-1-email") {
+    const v = getTourFieldValue(selector);
+    if (!v) return { ok: false, kind: "empty" };
+    if (!isApplicantEmailFormatValid(v)) return { ok: false, kind: "format" };
+    return { ok: true };
+  }
+  if (!getTourFieldValue(selector)) return { ok: false, kind: "empty" };
+  return { ok: true };
+}
+
 function focusTourTargetForStep(selector: string) {
   try {
+    if (selector === "#tour-step-2-categories") {
+      document.querySelector<HTMLElement>("#apply-cat-1")?.focus({
+        preventScroll: true,
+      });
+      return;
+    }
+    if (selector === "#tour-step-2-labels") {
+      document.querySelector<HTMLElement>("#apply-labels")?.focus({
+        preventScroll: true,
+      });
+      return;
+    }
+    if (selector === ".tour-step-4") {
+      document.querySelector<HTMLElement>("#apply-ingredient")?.focus({
+        preventScroll: true,
+      });
+      return;
+    }
     if (selector === ".tour-step-5") {
       document.querySelector<HTMLElement>("#apply-ai-cat")?.focus({
         preventScroll: true,
@@ -102,7 +166,14 @@ function focusTourTargetForStep(selector: string) {
   }
 }
 
-function appendValidationHint(node: ReactNode): ReactNode {
+function appendValidationHint(
+  node: ReactNode,
+  kind: InputGuardKind,
+): ReactNode {
+  const msg =
+    kind === "format"
+      ? "* 올바른 양식으로 입력해 주세요."
+      : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
   return (
     <Fragment>
       {node}
@@ -114,7 +185,7 @@ function appendValidationHint(node: ReactNode): ReactNode {
           fontWeight: 700,
         }}
       >
-        * 내용을 입력해야 다음으로 넘어갈 수 있습니다.
+        {msg}
       </span>
     </Fragment>
   );
@@ -136,9 +207,17 @@ type SmartStepStore = Pick<
   | "rpNameEn"
   | "rpContact"
   | "productNameEn"
+  | "category1"
+  | "category2"
+  | "category3"
+  | "feiNumber"
   | "labelFiles"
   | "ingredientText"
+  | "ingredientFileMeta"
+  | "isIngredientConfirmed"
   | "aiCategoryQuery"
+  | "editingId"
+  | "cartLines"
 >;
 
 /** useApplyStore 기준으로 첫 빈 필수 입력에 해당하는 Joyride 스텝 인덱스 계산 */
@@ -150,11 +229,24 @@ export function calculateSmartStep(
 
   if (pathname === "/apply/step2") {
     if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
-    const hasIngredient =
-      (store.labelFiles?.length ?? 0) > 0 || t(store.ingredientText).length > 0;
-    if (!hasIngredient) return { kind: "step2", index: 1 };
+    if (!store.category1 || !store.category2 || !store.category3) {
+      return { kind: "step2", index: 1 };
+    }
     if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 2 };
-    return { kind: "step2", index: 2 };
+    if (store.feiNumber.trim().length !== 10) return { kind: "step2", index: 3 };
+    const labelsOk =
+      (store.labelFiles?.length ?? 0) > 0 ||
+      (store.editingId != null &&
+        (store.cartLines.find((c) => c.id === store.editingId)?.labelImageUrl
+          .trim() ?? "") !== "");
+    if (!labelsOk) return { kind: "step2", index: 4 };
+    if (store.editingId == null && store.ingredientFileMeta == null) {
+      return { kind: "step2", index: 5 };
+    }
+    if (!t(store.ingredientText) || !store.isIngredientConfirmed) {
+      return { kind: "step2", index: 5 };
+    }
+    return { kind: "step2", index: 6 };
   }
 
   if (!store.isAgreed) {
@@ -176,19 +268,9 @@ function readTutorialDone(): boolean {
   return readTutorialDoneFromStorage();
 }
 
-function persistTutorialDone() {
-  try {
-    localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
-    sessionStorage.removeItem(CONTINUE_SESSION_KEY);
-    dispatchTutorialCompleted();
-  } catch {
-    /* ignore */
-  }
-}
-
 function setContinueFlag() {
   try {
-    sessionStorage.setItem(CONTINUE_SESSION_KEY, "1");
+    sessionStorage.setItem(APPLY_TUTORIAL_CONTINUE_SESSION_KEY, "1");
   } catch {
     /* ignore */
   }
@@ -196,7 +278,7 @@ function setContinueFlag() {
 
 function readContinueFlag(): boolean {
   try {
-    return sessionStorage.getItem(CONTINUE_SESSION_KEY) === "1";
+    return sessionStorage.getItem(APPLY_TUTORIAL_CONTINUE_SESSION_KEY) === "1";
   } catch {
     return false;
   }
@@ -275,23 +357,52 @@ const step1MainSteps: Step[] = [
 const stepsPart2: Step[] = [
   {
     target: ".tour-step-3",
-    title: "3 / 5",
+    title: "1 / 7",
     content: "화장품의 공식 영문 제품명과 브랜드를 적는 곳입니다.",
     placement: "bottom",
   },
   {
-    target: ".tour-step-4",
-    title: "4 / 5",
+    target: "#tour-step-2-categories",
+    title: "2 / 7",
     content:
-      "화장품 뒷면의 성분표 사진을 찍어 올리시면, AI가 영문 성분명만 쏙쏙 뽑아냅니다.",
-    placement: "top",
+      "FDA Cosmetics Direct 기준 1·2·3단계 카테고리를 순서대로 모두 선택해 주세요.",
+    placement: "bottom",
   },
   {
     target: ".tour-step-5",
-    title: "5 / 5",
+    title: "3 / 7",
     content:
-      "제품의 특징(예: 수분크림)을 입력하고 검색을 누르시면, AI가 미국 FDA 기준에 맞는 카테고리를 찾아줍니다.",
+      "제품 특징(예: 수분크림)을 입력하고 검색을 누르면, AI가 카테고리 후보를 찾아줍니다. 필요 없으면 비워 두고 다음으로 이동할 수 있습니다.",
     placement: "bottom",
+  },
+  {
+    target: "#apply-fei",
+    title: "4 / 7",
+    content:
+      "제조시설 FEI 번호(숫자 10자리)를 입력합니다. 제조사에 문의해 확인해 주세요.",
+    placement: "bottom",
+  },
+  {
+    target: "#tour-step-2-labels",
+    title: "5 / 7",
+    content:
+      "영문 패키지 또는 라벨 사진을 업로드해 주세요. 앞·뒷면이 모두 잘 보이도록 촬영합니다.",
+    placement: "top",
+  },
+  {
+    target: ".tour-step-4",
+    title: "6 / 7",
+    content:
+      "성분표 이미지를 올리면 AI가 영문 성분명을 추출합니다. 결과를 반드시 확인·수정하고 성분표 확인까지 완료해 주세요.",
+    placement: "top",
+  },
+  {
+    target: "#tour-step-2-save",
+    title: "7 / 7",
+    content:
+      "입력을 마친 뒤 실제 화면의 「목록에 추가하기」 또는 「목록에 반영하기」 버튼을 직접 눌러 저장해 주세요.",
+    placement: "top",
+    styles: { buttonPrimary: { display: "none" } },
   },
 ];
 
@@ -341,9 +452,6 @@ const joyrideStyles = {
     backgroundColor: "#f9fafb",
     fontWeight: 600,
   },
-  buttonClose: {
-    color: "#57534e",
-  },
 };
 
 const joyrideOptionsAboveModal: Partial<Options> = {
@@ -356,7 +464,7 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   scrollOffset: 96,
   showProgress: false,
   skipBeacon: true,
-  buttons: ["back", "close", "primary", "skip"] as ButtonType[],
+  buttons: ["back", "primary", "skip"] as ButtonType[],
   /** 동의 모달 z-[60]보다 위 */
   zIndex: 100,
   targetWaitTimeout: 3000,
@@ -390,9 +498,10 @@ export function ApplyOnboardingTour() {
   const [pendingRpAfterModal, setPendingRpAfterModal] = useState(false);
   const [joyrideCycle, setJoyrideCycle] = useState(0);
   const [joyrideStartIndex, setJoyrideStartIndex] = useState(0);
-  const [inputGuardErrorIndex, setInputGuardErrorIndex] = useState<number | null>(
-    null,
-  );
+  const [inputGuardIssue, setInputGuardIssue] = useState<{
+    index: number;
+    kind: InputGuardKind;
+  } | null>(null);
 
   const step1PhaseRef = useRef(step1Phase);
   step1PhaseRef.current = step1Phase;
@@ -409,12 +518,15 @@ export function ApplyOnboardingTour() {
       list.map((step, i) => {
         const sel = typeof step.target === "string" ? step.target : "";
         const showHint =
-          inputGuardErrorIndex === i &&
+          inputGuardIssue !== null &&
+          inputGuardIssue.index === i &&
           sel !== "" &&
           INPUT_GUARD_TARGETS.has(sel);
         return {
           ...step,
-          content: showHint ? appendValidationHint(step.content) : step.content,
+          content: showHint
+            ? appendValidationHint(step.content, inputGuardIssue.kind)
+            : step.content,
         };
       });
 
@@ -425,12 +537,11 @@ export function ApplyOnboardingTour() {
     }
     if (pathname === "/apply/step2") return wrap(stepsPart2);
     return [];
-  }, [pathname, step1Phase, inputGuardErrorIndex]);
+  }, [pathname, step1Phase, inputGuardIssue]);
 
   const joyrideLocale = useMemo(
     () => ({
       back: "이전",
-      close: "닫기",
       last:
         pathname === "/apply/step1" && step1Phase === "modal"
           ? "적용하기"
@@ -524,21 +635,19 @@ export function ApplyOnboardingTour() {
       if (e.key === "Tab" && e.shiftKey) return;
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.altKey)) return;
 
-      if (
-        stepTargetStr &&
-        INPUT_GUARD_TARGETS.has(stepTargetStr) &&
-        !getTourFieldValue(stepTargetStr)
-      ) {
-        setInputGuardErrorIndex(state.index);
-        focusTourTargetForStep(stepTargetStr);
-        if (e.key === "Enter") {
-          e.preventDefault();
-        }
-        return;
-      }
-
       if (stepTargetStr && INPUT_GUARD_TARGETS.has(stepTargetStr)) {
-        setInputGuardErrorIndex((cur) => (cur === state.index ? null : cur));
+        const g = evaluateInputGuard(stepTargetStr);
+        if (!g.ok) {
+          setInputGuardIssue({ index: state.index, kind: g.kind });
+          focusTourTargetForStep(stepTargetStr);
+          if (e.key === "Enter") {
+            e.preventDefault();
+          }
+          return;
+        }
+        setInputGuardIssue((cur) =>
+          cur?.index === state.index ? null : cur,
+        );
       }
 
       if (e.key === "Enter") {
@@ -733,7 +842,7 @@ export function ApplyOnboardingTour() {
     }
     setTutorialDone(false);
     setPendingRpAfterModal(false);
-    setInputGuardErrorIndex(null);
+    setInputGuardIssue(null);
 
     if (pathname === "/apply/step2") {
       setContinueFlag();
@@ -765,13 +874,11 @@ export function ApplyOnboardingTour() {
     return function ApplyJoyrideTooltip(props: TooltipRenderProps) {
       const {
         backProps,
-        closeProps,
         primaryProps,
         skipProps,
         step,
         tooltipProps,
         index,
-        isLastStep,
       } = props;
       const { buttons, content, styles: stepStyles, title } = step;
       const primaryChildren = (primaryProps as { children?: ReactNode })
@@ -805,7 +912,7 @@ export function ApplyOnboardingTour() {
           {hasFooter ? (
             <div style={stepStyles.tooltipFooter}>
               <div style={stepStyles.tooltipFooterSpacer}>
-                {buttons.includes("skip") && !isLastStep ? (
+                {buttons.includes("skip") ? (
                   <button
                     type="button"
                     style={stepStyles.buttonSkip}
@@ -832,13 +939,14 @@ export function ApplyOnboardingTour() {
                     e.preventDefault();
                     const sel = typeof step.target === "string" ? step.target : "";
                     if (INPUT_GUARD_TARGETS.has(sel)) {
-                      if (!getTourFieldValue(sel)) {
-                        setInputGuardErrorIndex(index);
+                      const g = evaluateInputGuard(sel);
+                      if (!g.ok) {
+                        setInputGuardIssue({ index, kind: g.kind });
                         focusTourTargetForStep(sel);
                         return;
                       }
-                      setInputGuardErrorIndex((cur) =>
-                        cur === index ? null : cur,
+                      setInputGuardIssue((cur) =>
+                        cur?.index === index ? null : cur,
                       );
                     }
                     primaryOnClick(e);
@@ -848,9 +956,6 @@ export function ApplyOnboardingTour() {
                 </button>
               ) : null}
             </div>
-          ) : null}
-          {buttons.includes("close") ? (
-            <button type="button" style={stepStyles.buttonClose} {...closeProps} />
           ) : null}
         </div>
       );
@@ -863,7 +968,7 @@ export function ApplyOnboardingTour() {
       if (data.type !== EVENTS.TOUR_STATUS) return;
 
       if (data.status === STATUS.SKIPPED) {
-        persistTutorialDone();
+        persistApplyTutorialDone();
         setTutorialDone(true);
         setRun(false);
         return;
@@ -905,7 +1010,7 @@ export function ApplyOnboardingTour() {
       }
 
       if (pathname === "/apply/step2") {
-        persistTutorialDone();
+        persistApplyTutorialDone();
         setTutorialDone(true);
         setRun(false);
       }

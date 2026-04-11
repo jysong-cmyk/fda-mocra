@@ -6,6 +6,10 @@ import { ApplyStepper } from "@/components/apply/apply-stepper";
 import { ApplyFieldLabel } from "@/components/apply/field-label";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
 import { AicraHeader } from "@/components/aicra-header";
+import {
+  isApplicantEmailFormatValid,
+  isApplicantPhoneFormatValid,
+} from "@/lib/apply/applicant-contact-validation";
 import type { CommonRequiredKey } from "@/lib/apply/types-and-constants";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
@@ -60,6 +64,19 @@ export function Step1Client() {
       alert(
         "필수 항목을 모두 완료해 주세요. 동의서·영문 RP·연락처·신청자(기업) 정보가 필요합니다.",
       );
+      return;
+    }
+    const st = useApplyStore.getState();
+    if (!isApplicantPhoneFormatValid(applicantPhone)) {
+      st.setPhoneError(
+        "올바른 양식으로 입력해 주세요. (예: +82-10-1234-5678)",
+      );
+      alert("신청자 연락처 형식을 확인해 주세요.");
+      return;
+    }
+    if (!isApplicantEmailFormatValid(applicantEmail)) {
+      st.setEmailError("올바른 양식으로 입력해 주세요.");
+      alert("신청자 이메일 형식을 확인해 주세요.");
       return;
     }
     if (rpNameEnError || rpContactError) {

@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  isApplicantEmailFormatValid,
+  isApplicantPhoneFormatValid,
+} from "@/lib/apply/applicant-contact-validation";
 import { useApplyStore } from "@/stores/apply-store";
 import { useCallback } from "react";
 
@@ -29,8 +33,19 @@ export function AgreementModal() {
     const name = applicantName.trim();
     const phone = applicantPhone.trim();
     const email = applicantEmail.trim();
+    setNameError("");
+    setPhoneError("");
+    setEmailError("");
     if (!name || !phone || !email) {
       alert("이름, 연락처, 이메일을 모두 입력해 주세요.");
+      return;
+    }
+    if (!isApplicantPhoneFormatValid(phone)) {
+      setPhoneError("올바른 양식으로 입력해 주세요. (예: +82-10-1234-5678)");
+      return;
+    }
+    if (!isApplicantEmailFormatValid(email)) {
+      setEmailError("올바른 양식으로 입력해 주세요.");
       return;
     }
     setApplicantName(name);
@@ -56,6 +71,9 @@ export function AgreementModal() {
     setCommonRequiredError,
     setIsAgreed,
     setOpen,
+    setEmailError,
+    setNameError,
+    setPhoneError,
   ]);
 
   if (!open) return null;
@@ -235,9 +253,9 @@ export function AgreementModal() {
               value={applicantPhone}
               onChange={(e) => {
                 const raw = e.target.value;
-                const sanitized = raw.replace(/[^0-9-]/g, "");
+                const sanitized = raw.replace(/[^\d+\-]/g, "");
                 if (raw !== sanitized) {
-                  setPhoneError("숫자와 하이픈(-)만 입력 가능합니다.");
+                  setPhoneError("+, 숫자, 하이픈(-)만 입력 가능합니다.");
                 } else {
                   setPhoneError("");
                 }
@@ -249,7 +267,7 @@ export function AgreementModal() {
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
               }`}
-              placeholder="예: 010-1234-5678"
+              placeholder="예: +82-10-1234-5678"
             />
             {phoneError ? (
               <p className="mt-1 text-xs text-red-500">{phoneError}</p>

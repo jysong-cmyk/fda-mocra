@@ -213,7 +213,7 @@ export function LandingContent() {
             href="/register"
             className={`mt-10 inline-flex max-w-[min(100%,22rem)] cursor-pointer items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-200 to-amber-300 px-5 py-3 text-xs font-semibold text-emerald-950 shadow-lg shadow-black/20 ring-1 ring-amber-400/50 transition hover:from-emerald-800 hover:to-emerald-700 hover:text-stone-50 hover:ring-emerald-600/30 sm:max-w-none sm:gap-2 sm:px-8 sm:py-3.5 sm:text-sm md:mt-14 md:px-10 md:py-4 md:text-base ${k}`}
           >
-            Aicra와 함께 5분만에 Mocra 등록하기
+            5분만에 Mocra등록하기
             <span aria-hidden className="text-base sm:text-lg">
               →
             </span>
@@ -525,7 +525,7 @@ export function LandingContent() {
               href="/register"
               className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-400/45 bg-gradient-to-r from-amber-200/95 to-amber-300/90 px-5 py-2.5 text-sm font-semibold text-emerald-950 shadow-md shadow-emerald-950/10 ring-1 ring-amber-400/40 transition hover:from-emerald-800 hover:to-emerald-700 hover:text-stone-50 hover:ring-emerald-600/25 ${k}`}
             >
-              Aicra와 함께 5분만에 Mocra 등록하기
+              5분만에 Mocra등록하기
               <span aria-hidden>→</span>
             </Link>
           </RevealOnScroll>
@@ -545,7 +545,7 @@ export function LandingContent() {
           href="/register"
           className={`mt-8 inline-block cursor-pointer text-sm font-medium text-amber-300 underline-offset-4 hover:text-amber-200 hover:underline ${k}`}
         >
-          Aicra와 함께 5분만에 Mocra 등록하기 →
+          5분만에 Mocra등록하기 →
         </Link>
         <p
           className={`mx-auto mt-10 max-w-xl px-4 text-[11px] leading-relaxed text-emerald-300/60 ${k}`}

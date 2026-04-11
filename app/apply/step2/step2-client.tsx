@@ -10,11 +10,16 @@ import { Ag, ApplyFieldLabel } from "@/components/apply/field-label";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
 import { AicraHeader } from "@/components/aicra-header";
 import {
+  isApplicantEmailFormatValid,
+  isApplicantPhoneFormatValid,
+} from "@/lib/apply/applicant-contact-validation";
+import {
   AI_CATEGORY_QUERY_REGEX,
   FAKE_OCR_TEXT,
   pathLabelFrom,
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
+import { persistApplyTutorialDone } from "@/lib/apply/tutorial-constants";
 import { APPLY_SAVE_PRODUCT_FIELD } from "@/lib/apply/save-product-server-validation";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
@@ -347,6 +352,24 @@ export function Step2Client() {
       return;
     }
     if (
+      st.applicantPhone.trim() !== "" &&
+      !isApplicantPhoneFormatValid(st.applicantPhone)
+    ) {
+      st.setPhoneError(
+        "올바른 양식으로 입력해 주세요. (예: +82-10-1234-5678)",
+      );
+      alert("신청자 연락처 형식을 확인해 주세요.");
+      return;
+    }
+    if (
+      st.applicantEmail.trim() !== "" &&
+      !isApplicantEmailFormatValid(st.applicantEmail)
+    ) {
+      st.setEmailError("올바른 양식으로 입력해 주세요.");
+      alert("신청자 이메일 형식을 확인해 주세요.");
+      return;
+    }
+    if (
       st.nameError !== "" ||
       st.phoneError !== "" ||
       st.emailError !== ""
@@ -429,6 +452,8 @@ export function Step2Client() {
         alert(res.error);
         return;
       }
+
+      persistApplyTutorialDone();
 
       if (res.mode === "edit") {
         st.setCartLines((prev) =>
@@ -646,6 +671,7 @@ export function Step2Client() {
                 ) : null}
 
                 <div
+                  id="tour-step-2-categories"
                   className={`mt-6 grid grid-cols-1 gap-3 rounded-lg sm:grid-cols-3 ${
                     s.productFieldError.category === true
                       ? "p-2 ring-2 ring-red-400 ring-offset-2"
@@ -774,6 +800,7 @@ export function Step2Client() {
               </div>
 
               <div
+                id="tour-step-2-labels"
                 className={
                   s.productFieldError.labels === true
                     ? "rounded-lg p-2 ring-2 ring-red-400 ring-offset-1"
@@ -955,6 +982,7 @@ export function Step2Client() {
             <ApplyFooter
               showPrev
               prevHref="/apply/step1"
+              nextButtonId="tour-step-2-save"
               nextLabel={
                 s.editingId != null ? "목록에 반영하기" : "목록에 추가하기"
               }

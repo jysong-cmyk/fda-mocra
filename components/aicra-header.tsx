@@ -36,7 +36,7 @@ export function AicraHeader({ page }: { page: AicraHeaderPage }) {
                 href="/register"
                 className={`max-w-[11.5rem] cursor-pointer rounded-full border border-amber-400/40 bg-emerald-950 px-3 py-2 text-center text-[10px] font-semibold leading-tight text-stone-50 shadow-sm transition hover:bg-emerald-900 hover:ring-2 hover:ring-amber-400/25 sm:max-w-none sm:px-5 sm:text-sm sm:leading-snug ${k}`}
               >
-                Aicra와 함께 5분만에 Mocra 등록하기 →
+                5분만에 Mocra등록하기 →
               </Link>
             </>
           )}
