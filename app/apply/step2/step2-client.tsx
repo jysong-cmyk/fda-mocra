@@ -87,11 +87,13 @@ export function Step2Client() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [aiCategoryAutoFilledNotice, setAiCategoryAutoFilledNotice] =
     useState(false);
+  const [isIngredientConfirmed, setIsIngredientConfirmed] = useState(false);
 
   const s = useApplyStore();
 
   const handleAddAnotherProduct = useCallback(() => {
     useApplyStore.getState().clearProductZoneB();
+    setIsIngredientConfirmed(false);
     setCartSuccessModal(null);
     window.setTimeout(() => {
       document
@@ -102,6 +104,7 @@ export function Step2Client() {
 
   const handleGoToCartList = useCallback(() => {
     useApplyStore.getState().clearProductZoneB();
+    setIsIngredientConfirmed(false);
     setCartSuccessModal(null);
     router.push("/apply/step3");
   }, [router]);
@@ -113,7 +116,7 @@ export function Step2Client() {
       prevOcrProcessingRef.current = s.ocrProcessing;
       return;
     }
-    if (s.isIngredientConfirmed) {
+    if (isIngredientConfirmed) {
       setOcrReviewState("idle");
       prevOcrProcessingRef.current = s.ocrProcessing;
       return;
@@ -126,7 +129,7 @@ export function Step2Client() {
     }
   }, [
     s.showIngredientTextarea,
-    s.isIngredientConfirmed,
+    isIngredientConfirmed,
     s.ocrProcessing,
     s.ingredientText,
   ]);
@@ -290,7 +293,8 @@ export function Step2Client() {
         inputEl.value = "";
         s.setIngredientFileMeta(null);
         s.setOcrProcessing(false);
-        s.setIsIngredientConfirmed(false);
+        setIsIngredientConfirmed(false);
+        useApplyStore.getState().setIsIngredientConfirmed(false);
         return;
       }
       if (file.size > MAX_INGREDIENT_FILE_BYTES) {
@@ -315,7 +319,8 @@ export function Step2Client() {
       }
       ingredientOcrInFlightRef.current = true;
       setIsOcrLoading(true);
-      s.setIsIngredientConfirmed(false);
+      setIsIngredientConfirmed(false);
+      useApplyStore.getState().setIsIngredientConfirmed(false);
       s.setIngredientFileMeta({
         name: file.name,
         size: file.size,
@@ -375,7 +380,8 @@ export function Step2Client() {
         const st = useApplyStore.getState();
         st.setIngredientText(text);
         st.setShowIngredientTextarea(true);
-        st.setIsIngredientConfirmed(false);
+        setIsIngredientConfirmed(false);
+        useApplyStore.getState().setIsIngredientConfirmed(false);
       } catch (err) {
         console.error("[OCR FATAL ERROR]:", err);
         // catch에서는 응답 파싱 없이 폴백만 (네트워크/런타임 예외)
@@ -430,6 +436,12 @@ export function Step2Client() {
 
   const runAddOrEdit = useCallback(async () => {
     const st = useApplyStore.getState();
+    if (st.ingredientText.trim() !== "" && !isIngredientConfirmed) {
+      alert(
+        "추출된 성분 내용을 확인하신 후 [성분표 확인] 버튼을 눌러주세요.",
+      );
+      return;
+    }
     const commonErr: Record<string, boolean> = {};
     if (!st.isAgreed) commonErr.agreement = true;
     else {
@@ -459,7 +471,7 @@ export function Step2Client() {
       if (st.ingredientFileMeta === null) nextErr.ingredientImage = true;
     }
     if (st.ingredientText.trim() === "") nextErr.ingredientText = true;
-    if (!st.isIngredientConfirmed) nextErr.ingredientConfirm = true;
+    if (!isIngredientConfirmed) nextErr.ingredientConfirm = true;
 
     const hasCommon = Object.keys(commonErr).length > 0;
     const hasProduct = Object.keys(nextErr).length > 0;
@@ -528,6 +540,7 @@ export function Step2Client() {
         alert("수정 대상을 찾을 수 없습니다.");
         st.setEditingId(null);
         st.clearProductZoneB();
+        setIsIngredientConfirmed(false);
         return;
       }
       const hasNewLabels = files.length > 0;
@@ -559,7 +572,7 @@ export function Step2Client() {
           st.ingredientFileMeta != null ? "1" : "",
         );
       }
-      fd.append(F.ingredientConfirmed, st.isIngredientConfirmed ? "1" : "");
+      fd.append(F.ingredientConfirmed, isIngredientConfirmed ? "1" : "");
       fd.append(F.rpNameEn, st.rpNameEn.trim());
       fd.append(F.rpContact, st.rpContact.trim());
       fd.append(F.agentName, st.agentName);
@@ -606,7 +619,7 @@ export function Step2Client() {
     } finally {
       st.setIsAddingProduct(false);
     }
-  }, [setCartSuccessModal]);
+  }, [setCartSuccessModal, isIngredientConfirmed]);
 
   return (
     <ApplyShell>
@@ -1073,7 +1086,8 @@ export function Step2Client() {
                         s.clearProductFieldKey("ingredientText");
                         s.clearProductFieldKey("ingredientConfirm");
                         s.setIngredientText(e.target.value);
-                        s.setIsIngredientConfirmed(false);
+                        setIsIngredientConfirmed(false);
+                        useApplyStore.getState().setIsIngredientConfirmed(false);
                         setOcrReviewState("reviewed");
                       }}
                       onFocus={() => {
@@ -1112,23 +1126,33 @@ export function Step2Client() {
                     >
                       <button
                         type="button"
-                        disabled={s.isAddingProduct}
+                        disabled={
+                          s.isAddingProduct ||
+                          s.ingredientText.trim() === "" ||
+                          isIngredientConfirmed
+                        }
                         onClick={() => {
                           setOcrReviewState("idle");
-                          s.setIsIngredientConfirmed(true);
+                          setIsIngredientConfirmed(true);
+                          useApplyStore.getState().setIsIngredientConfirmed(true);
                           s.clearProductFieldKey("ingredientConfirm");
                         }}
-                        className={`w-full cursor-pointer rounded-lg border bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6 ${
-                          ocrReviewState === "reviewed" &&
-                          !s.isIngredientConfirmed
-                            ? "animate-pulse border-2 border-green-500 ring-2 ring-green-200/90"
-                            : "border-zinc-300"
+                        className={`w-full rounded-lg border py-2.5 text-sm font-semibold sm:w-auto sm:px-6 ${
+                          isIngredientConfirmed
+                            ? "cursor-default border-emerald-600/80 bg-emerald-50 text-emerald-900 shadow-sm disabled:cursor-default disabled:opacity-100"
+                            : `cursor-pointer bg-zinc-100 text-zinc-800 hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                ocrReviewState === "reviewed"
+                                  ? "animate-pulse border-2 border-green-500 ring-2 ring-green-200/90"
+                                  : "border-zinc-300"
+                              }`
                         }`}
                       >
-                        성분표 확인
+                        {isIngredientConfirmed
+                          ? "✅ 확인 완료"
+                          : "성분표 확인"}
                       </button>
                     </div>
-                    {s.isIngredientConfirmed ? (
+                    {isIngredientConfirmed ? (
                       <p className="mt-1.5 text-xs font-medium text-emerald-700">
                         성분표 내용 확인이 완료되었습니다.
                       </p>
@@ -1141,7 +1165,11 @@ export function Step2Client() {
                 <button
                   type="button"
                   disabled={s.isAddingProduct}
-                  onClick={() => s.clearProductZoneB()}
+                  onClick={() => {
+                    setIsIngredientConfirmed(false);
+                    useApplyStore.getState().setIsIngredientConfirmed(false);
+                    s.clearProductZoneB();
+                  }}
                   className="w-full cursor-pointer rounded-xl border-2 border-zinc-300 bg-white py-3 text-sm font-semibold text-zinc-800 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   수정 취소
