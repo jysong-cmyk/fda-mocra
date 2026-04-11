@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ACTIONS,
   EVENTS,
   Joyride,
   ORIGIN,
@@ -11,6 +10,7 @@ import {
   type EventHandler,
   type Options,
   type Step,
+  type TooltipRenderProps,
 } from "react-joyride";
 import {
   APPLY_TUTORIAL_RESUME_EVENT,
@@ -21,7 +21,16 @@ import {
 } from "@/lib/apply/tutorial-constants";
 import { useApplyStore, type ApplyStore } from "@/stores/apply-store";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 
 const CONTINUE_SESSION_KEY = "aicra_apply_tour_continue";
 
@@ -31,12 +40,85 @@ const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
   "#tour-step-1-submit",
 ]);
 
-/** Primary(다음) 클릭 시 실제 DOM과 동기화할 스텝 타깃 (CTA·모달 적용·RP 다음) */
-const PRIMARY_CLICK_SYNC_TARGETS = new Set<string>([
-  ".tour-step-1",
-  "#tour-step-1-submit",
-  "#tour-step-next-btn",
+/** Primary(다음)/Tab·Enter 전 값 검사 대상 (선택 추천인 제외) */
+const INPUT_GUARD_TARGETS = new Set<string>([
+  "#tour-step-1-company",
+  "#tour-step-1-contact",
+  "#tour-step-1-email",
+  "#tour-step-rp-name",
+  "#tour-step-rp-contact",
+  ".tour-step-3",
+  ".tour-step-4",
+  ".tour-step-5",
 ]);
+
+function getTourFieldValue(selector: string): string {
+  try {
+    if (selector === ".tour-step-4") {
+      const st = useApplyStore.getState();
+      if ((st.labelFiles?.length ?? 0) > 0) return "x";
+      if ((st.ingredientText ?? "").trim() !== "") return "x";
+      const fileInput = document.querySelector<HTMLInputElement>(".tour-step-4");
+      if (fileInput?.type === "file" && (fileInput.files?.length ?? 0) > 0) {
+        return "x";
+      }
+      return "";
+    }
+    if (selector === ".tour-step-5") {
+      return (useApplyStore.getState().aiCategoryQuery ?? "").trim();
+    }
+    const el = document.querySelector(selector);
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      if (el instanceof HTMLInputElement && el.type === "file") {
+        return el.files?.length ? "x" : "";
+      }
+      return el.value.trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
+function focusTourTargetForStep(selector: string) {
+  try {
+    if (selector === ".tour-step-5") {
+      document.querySelector<HTMLElement>("#apply-ai-cat")?.focus({
+        preventScroll: true,
+      });
+      return;
+    }
+    const el = document.querySelector(selector);
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      el.focus({ preventScroll: true });
+      return;
+    }
+    const inner = el?.querySelector?.(
+      "input, textarea",
+    ) as HTMLInputElement | HTMLTextAreaElement | null;
+    inner?.focus({ preventScroll: true });
+  } catch {
+    /* ignore */
+  }
+}
+
+function appendValidationHint(node: ReactNode): ReactNode {
+  return (
+    <Fragment>
+      {node}
+      <br />
+      <span
+        style={{
+          color: "#ef4444",
+          fontSize: 13,
+          fontWeight: 700,
+        }}
+      >
+        * 내용을 입력해야 다음으로 넘어갈 수 있습니다.
+      </span>
+    </Fragment>
+  );
+}
 
 type Step1Phase = "cta" | "modal" | "rp";
 
@@ -124,8 +206,9 @@ const step1CtaStep: Step = {
   target: ".tour-step-1",
   title: "1 단계",
   content:
-    "안전한 등록을 위해 약관을 읽고 동의해 주세요. 이 영역의 버튼을 눌러 동의서 창을 여세요.",
+    "실제 화면의 「서비스 대행 동의서 보기 및 정보 입력(필수)」 버튼을 직접 클릭해 주세요.",
   placement: "bottom",
+  styles: { buttonPrimary: { display: "none" } },
 };
 
 const step1ModalSteps: Step[] = [
@@ -150,8 +233,10 @@ const step1ModalSteps: Step[] = [
   {
     target: "#tour-step-1-submit",
     title: "1-4 · 동의",
-    content: "입력을 마치셨다면, 동의하고 다음 단계로 진행하세요.",
+    content:
+      "실제 화면의 「위 내용에 동의하고 적용하기」 버튼을 직접 클릭해 주세요.",
     placement: "top",
+    styles: { buttonPrimary: { display: "none" } },
   },
 ];
 
@@ -181,8 +266,9 @@ const step1MainSteps: Step[] = [
     target: "#tour-step-next-btn",
     title: "5 · 다음 단계",
     content:
-      "필수 항목을 확인한 뒤, 저장하고 다음 단계로 눌러 제품 정보 입력으로 이동해 주세요.",
+      "실제 화면의 「저장하고 다음 단계로」 버튼을 직접 클릭해 주세요.",
     placement: "top",
+    styles: { buttonPrimary: { display: "none" } },
   },
 ];
 
@@ -304,6 +390,9 @@ export function ApplyOnboardingTour() {
   const [pendingRpAfterModal, setPendingRpAfterModal] = useState(false);
   const [joyrideCycle, setJoyrideCycle] = useState(0);
   const [joyrideStartIndex, setJoyrideStartIndex] = useState(0);
+  const [inputGuardErrorIndex, setInputGuardErrorIndex] = useState<number | null>(
+    null,
+  );
 
   const step1PhaseRef = useRef(step1Phase);
   step1PhaseRef.current = step1Phase;
@@ -316,14 +405,27 @@ export function ApplyOnboardingTour() {
   }, []);
 
   const steps = useMemo(() => {
+    const wrap = (list: Step[]) =>
+      list.map((step, i) => {
+        const sel = typeof step.target === "string" ? step.target : "";
+        const showHint =
+          inputGuardErrorIndex === i &&
+          sel !== "" &&
+          INPUT_GUARD_TARGETS.has(sel);
+        return {
+          ...step,
+          content: showHint ? appendValidationHint(step.content) : step.content,
+        };
+      });
+
     if (pathname === "/apply/step1") {
-      if (step1Phase === "cta") return [step1CtaStep];
-      if (step1Phase === "modal") return step1ModalSteps;
-      return step1MainSteps;
+      if (step1Phase === "cta") return wrap([step1CtaStep]);
+      if (step1Phase === "modal") return wrap(step1ModalSteps);
+      return wrap(step1MainSteps);
     }
-    if (pathname === "/apply/step2") return stepsPart2;
+    if (pathname === "/apply/step2") return wrap(stepsPart2);
     return [];
-  }, [pathname, step1Phase]);
+  }, [pathname, step1Phase, inputGuardErrorIndex]);
 
   const joyrideLocale = useMemo(
     () => ({
@@ -421,6 +523,23 @@ export function ApplyOnboardingTour() {
 
       if (e.key === "Tab" && e.shiftKey) return;
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.altKey)) return;
+
+      if (
+        stepTargetStr &&
+        INPUT_GUARD_TARGETS.has(stepTargetStr) &&
+        !getTourFieldValue(stepTargetStr)
+      ) {
+        setInputGuardErrorIndex(state.index);
+        focusTourTargetForStep(stepTargetStr);
+        if (e.key === "Enter") {
+          e.preventDefault();
+        }
+        return;
+      }
+
+      if (stepTargetStr && INPUT_GUARD_TARGETS.has(stepTargetStr)) {
+        setInputGuardErrorIndex((cur) => (cur === state.index ? null : cur));
+      }
 
       if (e.key === "Enter") {
         e.preventDefault();
@@ -614,6 +733,7 @@ export function ApplyOnboardingTour() {
     }
     setTutorialDone(false);
     setPendingRpAfterModal(false);
+    setInputGuardErrorIndex(null);
 
     if (pathname === "/apply/step2") {
       setContinueFlag();
@@ -641,6 +761,102 @@ export function ApplyOnboardingTour() {
     };
   }, [handleSmartResume]);
 
+  const GuardedTooltip = useMemo(() => {
+    return function ApplyJoyrideTooltip(props: TooltipRenderProps) {
+      const {
+        backProps,
+        closeProps,
+        primaryProps,
+        skipProps,
+        step,
+        tooltipProps,
+        index,
+        isLastStep,
+      } = props;
+      const { buttons, content, styles: stepStyles, title } = step;
+      const primaryChildren = (primaryProps as { children?: ReactNode })
+        .children;
+      const primaryOnClick = primaryProps.onClick;
+      const hasFooter = buttons.some(
+        (b) => b === "back" || b === "primary" || b === "skip",
+      );
+      return (
+        <div
+          key="JoyrideTooltip"
+          className="react-joyride__tooltip"
+          data-joyride-step={index}
+          {...(step.id ? { "data-joyride-id": step.id } : {})}
+          style={stepStyles.tooltip}
+          {...tooltipProps}
+        >
+          <div style={stepStyles.tooltipContainer}>
+            {title ? (
+              <h4 id="joyride-tooltip-title" style={stepStyles.tooltipTitle}>
+                {title}
+              </h4>
+            ) : null}
+            <div
+              id="joyride-tooltip-content"
+              style={stepStyles.tooltipContent}
+            >
+              {content}
+            </div>
+          </div>
+          {hasFooter ? (
+            <div style={stepStyles.tooltipFooter}>
+              <div style={stepStyles.tooltipFooterSpacer}>
+                {buttons.includes("skip") && !isLastStep ? (
+                  <button
+                    type="button"
+                    style={stepStyles.buttonSkip}
+                    {...skipProps}
+                  />
+                ) : null}
+              </div>
+              {buttons.includes("back") && index > 0 ? (
+                <button
+                  type="button"
+                  style={stepStyles.buttonBack}
+                  {...backProps}
+                />
+              ) : null}
+              {buttons.includes("primary") ? (
+                <button
+                  type="button"
+                  style={stepStyles.buttonPrimary}
+                  aria-label={primaryProps["aria-label"]}
+                  data-action={primaryProps["data-action"]}
+                  role={primaryProps.role}
+                  title={primaryProps.title}
+                  onClick={(e: MouseEvent<HTMLElement>) => {
+                    e.preventDefault();
+                    const sel = typeof step.target === "string" ? step.target : "";
+                    if (INPUT_GUARD_TARGETS.has(sel)) {
+                      if (!getTourFieldValue(sel)) {
+                        setInputGuardErrorIndex(index);
+                        focusTourTargetForStep(sel);
+                        return;
+                      }
+                      setInputGuardErrorIndex((cur) =>
+                        cur === index ? null : cur,
+                      );
+                    }
+                    primaryOnClick(e);
+                  }}
+                >
+                  {primaryChildren}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {buttons.includes("close") ? (
+            <button type="button" style={stepStyles.buttonClose} {...closeProps} />
+          ) : null}
+        </div>
+      );
+    };
+  }, []);
+
   const onEvent = useCallback<EventHandler>(
     (data, controls) => {
       joyrideControlsRef.current = controls;
@@ -654,20 +870,6 @@ export function ApplyOnboardingTour() {
       }
 
       if (data.status !== STATUS.FINISHED) return;
-
-      if (data.action === ACTIONS.NEXT) {
-        const rawTarget = data.step?.target;
-        if (
-          typeof rawTarget === "string" &&
-          PRIMARY_CLICK_SYNC_TARGETS.has(rawTarget)
-        ) {
-          try {
-            document.querySelector<HTMLElement>(rawTarget)?.click();
-          } catch {
-            /* ignore */
-          }
-        }
-      }
 
       if (pathname === "/apply/step1") {
         const phase = step1PhaseRef.current;
@@ -726,6 +928,7 @@ export function ApplyOnboardingTour() {
       locale={joyrideLocale}
       styles={joyrideStyles}
       options={{ ...joyrideOptionsAboveModal }}
+      tooltipComponent={GuardedTooltip}
       onEvent={onEvent}
     />
   );
