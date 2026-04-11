@@ -50,6 +50,25 @@ function readIngredientOcrErrorFromJson(json: unknown): string | null {
   return null;
 }
 
+const INGREDIENT_PDF_BLOCKED_ALERT =
+  "PDF는 지원하지 않습니다. PNG, JPG 등 이미지 파일로 캡처하여 올려주세요.";
+
+async function isLikelyPdfUpload(file: File): Promise<boolean> {
+  const mime = (file.type ?? "").trim().toLowerCase();
+  if (mime === "application/pdf") return true;
+  if (file.name.toLowerCase().endsWith(".pdf")) return true;
+  if (file.size < 5) return false;
+  const buf = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+  if (buf.length < 5) return false;
+  return String.fromCharCode(
+    buf[0]!,
+    buf[1]!,
+    buf[2]!,
+    buf[3]!,
+    buf[4]!,
+  ) === "%PDF-";
+}
+
 type OcrReviewState = "idle" | "needs_review" | "reviewed";
 
 export function Step2Client() {
@@ -281,8 +300,13 @@ export function Step2Client() {
         inputEl.value = "";
         return;
       }
+      if (await isLikelyPdfUpload(file)) {
+        alert(INGREDIENT_PDF_BLOCKED_ALERT);
+        inputEl.value = "";
+        return;
+      }
       if (!isIngredientUploadClientAllowed(file)) {
-        alert("PNG, JPEG, JPG, PDF 파일만 업로드할 수 있습니다.");
+        alert("PNG, JPEG, JPG 파일만 업로드할 수 있습니다.");
         inputEl.value = "";
         return;
       }
@@ -1000,7 +1024,7 @@ export function Step2Client() {
               >
                 <ApplyFieldLabel
                   htmlFor="apply-ingredient"
-                  tooltip="성분표 이미지 또는 PDF를 업로드하면 분석 결과가 표시됩니다. 반드시 확인·수정해 주세요."
+                  tooltip="성분표 이미지를 업로드하면 분석 결과가 표시됩니다. 반드시 확인·수정해 주세요."
                 >
                   성분표 파일 (Aicra 인텔리전스)
                 </ApplyFieldLabel>
@@ -1013,7 +1037,7 @@ export function Step2Client() {
                   className="tour-step-4 block w-full cursor-pointer text-sm text-zinc-600 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:font-medium file:text-zinc-800 hover:file:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                 />
                 <p className="mt-1 text-xs text-zinc-500">
-                  PNG, JPEG, JPG, PDF (최대 {MAX_INGREDIENT_FILE_SIZE_MB}MB)
+                  PNG, JPEG, JPG (최대 {MAX_INGREDIENT_FILE_SIZE_MB}MB)
                 </p>
                 {isOcrLoading || s.ocrProcessing ? (
                   <div
