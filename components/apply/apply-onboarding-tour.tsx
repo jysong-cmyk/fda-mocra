@@ -58,7 +58,7 @@ const INPUT_GUARD_TARGETS = new Set<string>([
   ".tour-step-4",
 ]);
 
-type InputGuardKind = "empty" | "format";
+type InputGuardKind = "empty" | "format-phone" | "format-email";
 
 function getTourFieldValue(selector: string): string {
   try {
@@ -113,13 +113,15 @@ function evaluateInputGuard(
   if (selector === "#tour-step-1-contact") {
     const v = getTourFieldValue(selector);
     if (!v) return { ok: false, kind: "empty" };
-    if (!isApplicantPhoneFormatValid(v)) return { ok: false, kind: "format" };
+    if (!isApplicantPhoneFormatValid(v))
+      return { ok: false, kind: "format-phone" };
     return { ok: true };
   }
   if (selector === "#tour-step-1-email") {
     const v = getTourFieldValue(selector);
     if (!v) return { ok: false, kind: "empty" };
-    if (!isApplicantEmailFormatValid(v)) return { ok: false, kind: "format" };
+    if (!isApplicantEmailFormatValid(v))
+      return { ok: false, kind: "format-email" };
     return { ok: true };
   }
   if (!getTourFieldValue(selector)) return { ok: false, kind: "empty" };
@@ -171,9 +173,11 @@ function appendValidationHint(
   kind: InputGuardKind,
 ): ReactNode {
   const msg =
-    kind === "format"
-      ? "* 올바른 양식으로 입력해 주세요."
-      : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
+    kind === "format-phone"
+      ? "* 양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-...)"
+      : kind === "format-email"
+        ? "* 양식에 맞춰 입력해 주세요. (예: example@email.com)"
+        : "* 내용을 입력해야 다음으로 넘어갈 수 있습니다.";
   return (
     <Fragment>
       {node}

@@ -1,3 +1,4 @@
+import { isApplicantPhoneFormatValid } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
   RP_PRODUCT_NAME_REGEX,
@@ -148,8 +149,19 @@ export function validateApplyProductFormServer(
   if (applicantPhone === "") {
     return { ok: false, error: "연락처를 입력해 주세요." };
   }
-  if (/[^0-9-]/.test(applicantPhone)) {
-    return { ok: false, error: "연락처는 숫자와 하이픈(-)만 입력할 수 있습니다." };
+  if (/[^0-9+\-]/.test(applicantPhone)) {
+    return {
+      ok: false,
+      error:
+        "연락처는 숫자, 하이픈(-), 필요 시 맨 앞 + 만 사용할 수 있습니다.",
+    };
+  }
+  if (!isApplicantPhoneFormatValid(applicantPhone)) {
+    return {
+      ok: false,
+      error:
+        "연락처 형식을 확인해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+    };
   }
   if (applicantEmail === "") {
     return { ok: false, error: "이메일을 입력해 주세요." };

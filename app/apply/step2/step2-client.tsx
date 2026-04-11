@@ -356,7 +356,7 @@ export function Step2Client() {
       !isApplicantPhoneFormatValid(st.applicantPhone)
     ) {
       st.setPhoneError(
-        "올바른 양식으로 입력해 주세요. (예: +82-10-1234-5678)",
+        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
       );
       alert("신청자 연락처 형식을 확인해 주세요.");
       return;
@@ -365,7 +365,9 @@ export function Step2Client() {
       st.applicantEmail.trim() !== "" &&
       !isApplicantEmailFormatValid(st.applicantEmail)
     ) {
-      st.setEmailError("올바른 양식으로 입력해 주세요.");
+      st.setEmailError(
+        "양식에 맞춰 입력해 주세요. (예: example@email.com)",
+      );
       alert("신청자 이메일 형식을 확인해 주세요.");
       return;
     }

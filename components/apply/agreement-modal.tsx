@@ -41,11 +41,15 @@ export function AgreementModal() {
       return;
     }
     if (!isApplicantPhoneFormatValid(phone)) {
-      setPhoneError("올바른 양식으로 입력해 주세요. (예: +82-10-1234-5678)");
+      setPhoneError(
+        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+      );
       return;
     }
     if (!isApplicantEmailFormatValid(email)) {
-      setEmailError("올바른 양식으로 입력해 주세요.");
+      setEmailError(
+        "양식에 맞춰 입력해 주세요. (예: example@email.com)",
+      );
       return;
     }
     setApplicantName(name);
@@ -267,7 +271,7 @@ export function AgreementModal() {
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-200 focus:border-emerald-800 focus:ring-emerald-200"
               }`}
-              placeholder="예: +82-10-1234-5678"
+              placeholder="예: 010-1234-5678 또는 02-123-4567"
             />
             {phoneError ? (
               <p className="mt-1 text-xs text-red-500">{phoneError}</p>
