@@ -306,6 +306,32 @@ export function Step2Client() {
           method: "POST",
           body: fd,
         });
+        const contentType = res.headers.get("content-type") ?? "";
+        const isJsonBody =
+          contentType.toLowerCase().includes("application/json");
+
+        if (!res.ok) {
+          if (isJsonBody) {
+            const json: unknown = await res.json().catch(() => ({}));
+            alert(
+              readIngredientOcrErrorFromJson(json) ??
+                INGREDIENT_OCR_FALLBACK_ALERT,
+            );
+          } else {
+            alert(`서버 오류: ${res.status} ${res.statusText}`);
+          }
+          useApplyStore.getState().setIngredientFileMeta(null);
+          inputEl.value = "";
+          return;
+        }
+
+        if (!isJsonBody) {
+          alert(`서버 오류: ${res.status} ${res.statusText}`);
+          useApplyStore.getState().setIngredientFileMeta(null);
+          inputEl.value = "";
+          return;
+        }
+
         const json: unknown = await res.json().catch(() => ({}));
         const text =
           typeof json === "object" &&
@@ -314,14 +340,6 @@ export function Step2Client() {
           typeof (json as { text: unknown }).text === "string"
             ? (json as { text: string }).text
             : "";
-        if (!res.ok) {
-          alert(
-            readIngredientOcrErrorFromJson(json) ?? INGREDIENT_OCR_FALLBACK_ALERT,
-          );
-          useApplyStore.getState().setIngredientFileMeta(null);
-          inputEl.value = "";
-          return;
-        }
         if (text.trim() === "") {
           alert(
             readIngredientOcrErrorFromJson(json) ?? INGREDIENT_OCR_FALLBACK_ALERT,
@@ -335,7 +353,7 @@ export function Step2Client() {
         st.setShowIngredientTextarea(true);
         st.setIsIngredientConfirmed(false);
       } catch (err) {
-        console.error(err);
+        console.error("[OCR FATAL ERROR]:", err);
         // catch에서는 응답 파싱 없이 폴백만 (네트워크/런타임 예외)
         alert("파일 분석에 실패했습니다. 문서를 다시 확인해 주세요.");
         useApplyStore.getState().setIngredientFileMeta(null);

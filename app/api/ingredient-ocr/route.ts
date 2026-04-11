@@ -3,6 +3,8 @@ import { PDFParse } from "pdf-parse";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+/** Vercel Pro 등: 기본 10s 한도 완화 (플랜별 상한은 Vercel 정책 따름) */
+export const maxDuration = 60;
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const MAX_PDF_TEXT_CHARS = 120_000;
