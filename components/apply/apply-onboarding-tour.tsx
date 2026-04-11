@@ -134,38 +134,43 @@ function evaluateInputGuard(
   return { ok: true };
 }
 
+const TOUR_DEEP_FOCUSABLE =
+  "input:not([disabled]), textarea:not([disabled])";
+
+/**
+ * Joyride 스텝 타겟에 포커스: 타겟이 input/textarea면 직접, 래퍼면 내부 첫 활성 입력에 포커스.
+ * (튜토리얼 가드·Tab 로직에서 동기 호출)
+ */
 function focusTourTargetForStep(selector: string) {
   try {
-    if (selector === "#tour-step-2-labels") {
-      document.querySelector<HTMLElement>("#apply-labels")?.focus({
-        preventScroll: true,
-      });
+    const root = document.querySelector(selector);
+    if (!root) return;
+
+    if (
+      root instanceof HTMLInputElement ||
+      root instanceof HTMLTextAreaElement
+    ) {
+      if (!root.disabled) {
+        root.focus({ preventScroll: true });
+      }
       return;
     }
-    if (selector === ".tour-step-4") {
-      document.querySelector<HTMLElement>("#apply-ingredient")?.focus({
-        preventScroll: true,
-      });
-      return;
-    }
-    if (selector === ".tour-step-2-ai-search" || selector === ".tour-step-5") {
-      document.querySelector<HTMLElement>("#apply-ai-cat")?.focus({
-        preventScroll: true,
-      });
-      return;
-    }
-    const el = document.querySelector(selector);
-    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
-      el.focus({ preventScroll: true });
-      return;
-    }
-    const inner = el?.querySelector?.(
-      "input, textarea",
-    ) as HTMLInputElement | HTMLTextAreaElement | null;
-    inner?.focus({ preventScroll: true });
+
+    root
+      .querySelector<HTMLInputElement | HTMLTextAreaElement>(
+        TOUR_DEEP_FOCUSABLE,
+      )
+      ?.focus({ preventScroll: true });
   } catch {
     /* ignore */
   }
+}
+
+/** 툴팁 표시·스텝 전환 직후 DOM이 안정된 뒤 포커스 (Joyride 애니메이션 대비) */
+function scheduleFocusTourTargetForStep(selector: string) {
+  window.setTimeout(() => {
+    focusTourTargetForStep(selector);
+  }, 100);
 }
 
 function appendValidationHint(
@@ -1041,15 +1046,17 @@ export function ApplyOnboardingTour() {
     (data, controls) => {
       joyrideControlsRef.current = controls;
 
-      if (data.type === EVENTS.STEP_AFTER && pathname.includes("/apply/step2")) {
-        const t = data.step.target;
+      if (
+        data.type === EVENTS.TOOLTIP &&
+        (pathname.includes("/apply/step1") ||
+          pathname.includes("/apply/step2"))
+      ) {
+        const step = "step" in data ? data.step : undefined;
+        const t = step?.target;
         const sel = typeof t === "string" ? t : null;
         if (sel != null && sel !== "") {
-          window.requestAnimationFrame(() => {
-            focusTourTargetForStep(sel);
-          });
+          scheduleFocusTourTargetForStep(sel);
         }
-        return;
       }
 
       if (data.type !== EVENTS.TOUR_STATUS) return;
