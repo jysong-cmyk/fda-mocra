@@ -6,7 +6,6 @@ export const runtime = "nodejs";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const MAX_PDF_TEXT_CHARS = 120_000;
-const MIN_PDF_TEXT_CHARS = 24;
 const PDF_PARSE_MAX_PAGES = 40;
 
 const INGREDIENT_SYSTEM_KO = [
@@ -207,11 +206,11 @@ export async function POST(request: Request) {
         );
       }
 
-      if (pdfText.replace(/\s/g, "").length < MIN_PDF_TEXT_CHARS) {
+      if (pdfText.replace(/\s/g, "").length === 0) {
         return NextResponse.json(
           {
             error:
-              "PDF에서 선택 가능한 텍스트가 거의 없습니다. 스캔 전용 PDF는 이미지로 저장(JPG/PNG) 후 업로드하거나, 텍스트가 포함된 PDF로 다시 시도해 주세요.",
+              "텍스트가 없어서 성분을 확인할 수 없습니다. 텍스트가 포함된 문서나 이미지로 다시 업로드해 주세요.",
           },
           { status: 422 },
         );

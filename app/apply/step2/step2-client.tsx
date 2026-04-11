@@ -34,6 +34,22 @@ import { ApplyCardHeader, ApplyShell } from "../apply-shell";
 
 const kb = "break-keep text-balance" as const;
 
+const INGREDIENT_OCR_FALLBACK_ALERT =
+  "파일 분석에 실패했습니다. 문서를 다시 확인해 주세요.";
+
+function readIngredientOcrErrorFromJson(json: unknown): string | null {
+  if (
+    typeof json === "object" &&
+    json !== null &&
+    "error" in json &&
+    typeof (json as { error: unknown }).error === "string"
+  ) {
+    const s = (json as { error: string }).error.trim();
+    return s !== "" ? s : null;
+  }
+  return null;
+}
+
 type OcrReviewState = "idle" | "needs_review" | "reviewed";
 
 export function Step2Client() {
@@ -299,24 +315,17 @@ export function Step2Client() {
             ? (json as { text: string }).text
             : "";
         if (!res.ok) {
-          const errMsg =
-            typeof json === "object" &&
-            json !== null &&
-            "error" in json &&
-            typeof (json as { error: unknown }).error === "string"
-              ? (json as { error: string }).error
-              : null;
           alert(
-            errMsg != null && errMsg.trim() !== ""
-              ? errMsg
-              : "성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.",
+            readIngredientOcrErrorFromJson(json) ?? INGREDIENT_OCR_FALLBACK_ALERT,
           );
           useApplyStore.getState().setIngredientFileMeta(null);
           inputEl.value = "";
           return;
         }
         if (text.trim() === "") {
-          alert("성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.");
+          alert(
+            readIngredientOcrErrorFromJson(json) ?? INGREDIENT_OCR_FALLBACK_ALERT,
+          );
           useApplyStore.getState().setIngredientFileMeta(null);
           inputEl.value = "";
           return;
@@ -327,7 +336,8 @@ export function Step2Client() {
         st.setIsIngredientConfirmed(false);
       } catch (err) {
         console.error(err);
-        alert("성분표 파일 분석에 실패했습니다. 다시 시도해 주세요.");
+        // catch에서는 응답 파싱 없이 폴백만 (네트워크/런타임 예외)
+        alert("파일 분석에 실패했습니다. 문서를 다시 확인해 주세요.");
         useApplyStore.getState().setIngredientFileMeta(null);
         inputEl.value = "";
       } finally {
