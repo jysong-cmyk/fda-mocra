@@ -3,8 +3,10 @@
 import {
   EVENTS,
   Joyride,
+  ORIGIN,
   STATUS,
   type ButtonType,
+  type Controls,
   type EventHandler,
   type Options,
   type Step,
@@ -15,6 +17,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const TUTORIAL_STORAGE_KEY = "tutorial_completed";
 const CONTINUE_SESSION_KEY = "aicra_apply_tour_continue";
+
+/** Tab/Enter로 자동 Next 하지 않는 스텝 (v3: overlay/ESC는 overlayClickAction·dismissKeyAction 사용) */
+const KEYBOARD_NEXT_EXCLUDED_TARGETS = new Set<string>([
+  "#tour-step-next-btn",
+  "#tour-step-1-submit",
+]);
 
 type Step1Phase = "cta" | "modal" | "rp";
 
@@ -207,6 +215,10 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   targetWaitTimeout: 3000,
   /** 하이라이트 영역에서도 입력·클릭 가능 */
   blockTargetInteraction: false,
+  /** 배경 클릭으로 스텝이 닫히지 않도록 (구 API disableOverlayClose와 동등) */
+  overlayClickAction: false,
+  /** Esc로 닫히지 않도록 (구 API disableCloseOnEsc와 동등) */
+  dismissKeyAction: false,
 };
 
 function initialStep1Phase(): Step1Phase {
@@ -231,6 +243,8 @@ export function ApplyOnboardingTour() {
   const step1PhaseRef = useRef(step1Phase);
   step1PhaseRef.current = step1Phase;
 
+  const joyrideControlsRef = useRef<Controls | null>(null);
+
   useEffect(() => {
     setMounted(true);
     setTutorialDone(readTutorialDone());
@@ -245,6 +259,88 @@ export function ApplyOnboardingTour() {
     if (pathname === "/apply/step2") return stepsPart2;
     return [];
   }, [pathname, step1Phase]);
+
+  const runRef = useRef(run);
+  const stepsRef = useRef(steps);
+  runRef.current = run;
+  stepsRef.current = steps;
+
+  useEffect(() => {
+    if (!run || steps.length === 0) return;
+
+    const resolveTargetEl = (target: Step["target"]): HTMLElement | null => {
+      if (typeof target === "string") {
+        try {
+          return document.querySelector(target) as HTMLElement | null;
+        } catch {
+          return null;
+        }
+      }
+      if (typeof target === "function") {
+        return target() ?? null;
+      }
+      if (target && typeof target === "object" && "current" in target) {
+        return target.current;
+      }
+      if (target instanceof HTMLElement) return target;
+      return null;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" && e.key !== "Enter") return;
+      if (!runRef.current) return;
+
+      const controls = joyrideControlsRef.current;
+      if (!controls) return;
+
+      let state: ReturnType<Controls["info"]>;
+      try {
+        state = controls.info();
+      } catch {
+        return;
+      }
+
+      if (
+        state.status === STATUS.FINISHED ||
+        state.status === STATUS.SKIPPED ||
+        state.status === STATUS.IDLE ||
+        state.status === STATUS.PAUSED
+      ) {
+        return;
+      }
+      if (state.waiting) return;
+
+      const stepList = stepsRef.current;
+      const step = stepList[state.index];
+      if (!step) return;
+
+      if (
+        typeof step.target === "string" &&
+        KEYBOARD_NEXT_EXCLUDED_TARGETS.has(step.target)
+      ) {
+        return;
+      }
+
+      const targetEl = resolveTargetEl(step.target);
+      if (!targetEl) return;
+
+      const active = document.activeElement;
+      if (!active || !(active === targetEl || targetEl.contains(active))) {
+        return;
+      }
+
+      if (e.key === "Tab" && e.shiftKey) return;
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.altKey)) return;
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+      }
+      controls.next(ORIGIN.KEYBOARD);
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [run, steps.length]);
 
   /** 이미 동의(신청자 정보 저장)까지 끝난 경우 CTA를 건너뛰고 메인 폼 투어부터 */
   useEffect(() => {
@@ -388,7 +484,8 @@ export function ApplyOnboardingTour() {
   }, [mounted, tutorialDone, pathname]);
 
   const onEvent = useCallback<EventHandler>(
-    (data) => {
+    (data, controls) => {
+      joyrideControlsRef.current = controls;
       if (data.type !== EVENTS.TOUR_STATUS) return;
 
       if (data.status === STATUS.SKIPPED) {
