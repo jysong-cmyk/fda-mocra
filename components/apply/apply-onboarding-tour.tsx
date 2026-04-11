@@ -394,17 +394,30 @@ export function ApplyOnboardingTour() {
     setRun(false);
 
     let cancelled = false;
+    let companyFocusRetryId: number | undefined;
     const delayMs = 200;
     const timerId = window.setTimeout(() => {
       if (cancelled) return;
       setStep1Phase("modal");
       setJoyrideCycle((c) => c + 1);
       setRun(true);
+      document.querySelector<HTMLElement>("#tour-step-1-company")?.focus({
+        preventScroll: true,
+      });
+      companyFocusRetryId = window.setTimeout(() => {
+        if (cancelled) return;
+        document.querySelector<HTMLElement>("#tour-step-1-company")?.focus({
+          preventScroll: true,
+        });
+      }, 50) as number;
     }, delayMs);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timerId);
+      if (companyFocusRetryId !== undefined) {
+        window.clearTimeout(companyFocusRetryId);
+      }
     };
   }, [mounted, tutorialDone, pathname, isAgreementModalOpen, step1Phase]);
 
