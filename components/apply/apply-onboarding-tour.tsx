@@ -311,7 +311,9 @@ export function calculateSmartStep(
   if (pathname.includes("/apply/step2")) {
     if (!t(store.productNameEn)) return { kind: "step2", index: 0 };
     if (!t(store.aiCategoryQuery)) return { kind: "step2", index: 1 };
-    if (store.aiRecommendation != null) return { kind: "step2", index: 2 };
+    if (store.aiRecommendation != null && !store.isCategoryConfirmed) {
+      return { kind: "step2", index: 3 };
+    }
 
     const catsDone = isFdaCategorySelectionComplete(
       store.category1,

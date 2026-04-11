@@ -15,7 +15,6 @@ import {
 } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
-  pathLabelFrom,
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
 import {
@@ -47,6 +46,8 @@ export function Step2Client() {
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [ocrReviewState, setOcrReviewState] = useState<OcrReviewState>("idle");
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [aiCategoryAutoFilledNotice, setAiCategoryAutoFilledNotice] =
+    useState(false);
 
   const s = useApplyStore();
 
@@ -199,6 +200,7 @@ export function Step2Client() {
       return;
     }
     setSearchError(null);
+    setAiCategoryAutoFilledNotice(false);
     st.setAiRecommendation(null);
     st.setAiSearchLoading(true);
     try {
@@ -217,15 +219,15 @@ export function Step2Client() {
       const c1 = data.category1 ?? "";
       const c2 = data.category2 ?? "";
       const c3 = data.category3 ?? "";
-      useApplyStore.getState().setAiRecommendation({
-        pathLabel: pathLabelFrom(c1, c2, c3),
+      useApplyStore.setState({
         category1: c1,
         category2: c2,
         category3: c3,
+        isCategoryConfirmed: false,
+        aiRecommendation: null,
       });
-      alert(
-        "Aicra가 적절한 카테고리를 추천했습니다. 정확한지 한 번 더 확인하고 필요시 직접 수정해 주세요.",
-      );
+      useApplyStore.getState().clearProductFieldKey("category");
+      setAiCategoryAutoFilledNotice(true);
     } catch (err) {
       console.error(err);
       setSearchError(
@@ -649,8 +651,8 @@ export function Step2Client() {
                   id="tour-step-2-ai-result"
                   className={`mt-3 flex min-h-[7.5rem] flex-col rounded-lg border border-amber-100 bg-stone-50 px-3 py-2.5 text-sm text-zinc-800 ${
                     s.aiSearchLoading ||
-                    s.aiRecommendation != null ||
-                    searchError != null
+                    searchError != null ||
+                    aiCategoryAutoFilledNotice
                       ? s.aiSearchLoading || searchError != null
                         ? "items-center justify-center"
                         : ""
@@ -658,8 +660,8 @@ export function Step2Client() {
                   }`}
                 >
                   {s.aiSearchLoading ||
-                  s.aiRecommendation != null ||
-                  searchError != null ? (
+                  searchError != null ||
+                  aiCategoryAutoFilledNotice ? (
                     <>
                     {s.aiSearchLoading ? (
                       <div
@@ -698,12 +700,12 @@ export function Step2Client() {
                           {searchError}
                         </p>
                       </div>
-                    ) : s.aiRecommendation != null ? (
-                      <p>
-                        <span className="font-semibold text-emerald-900">
-                          추천 결과:
-                        </span>{" "}
-                        {s.aiRecommendation.pathLabel}
+                    ) : aiCategoryAutoFilledNotice ? (
+                      <p
+                        className={`text-center text-sm font-medium text-emerald-900 ${kb}`}
+                      >
+                        AI 추천 결과가 폼에 자동 적용되었습니다. 아래에서 확인해
+                        주세요.
                       </p>
                     ) : null}
                     </>
@@ -712,29 +714,6 @@ export function Step2Client() {
                       분류명을 입력한 뒤 「검색」을 누르면 여기에 AI 추천이 표시됩니다.
                     </p>
                   )}
-                  <div className="mt-3 border-t border-amber-100/80 pt-3">
-                    <button
-                      id="apply-ai-recommendation-apply"
-                      type="button"
-                      disabled={
-                        s.isAddingProduct ||
-                        s.aiSearchLoading ||
-                        s.aiRecommendation == null
-                      }
-                      onClick={() => {
-                        const st = useApplyStore.getState();
-                        if (st.aiRecommendation == null) return;
-                        st.setCategory1(st.aiRecommendation.category1);
-                        st.setCategory2(st.aiRecommendation.category2);
-                        st.setCategory3(st.aiRecommendation.category3);
-                        st.setAiRecommendation(null);
-                        st.clearProductFieldKey("category");
-                      }}
-                      className="w-full cursor-pointer rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
-                    >
-                      선택
-                    </button>
-                  </div>
                 </div>
 
                 <div
@@ -760,6 +739,7 @@ export function Step2Client() {
                       id="apply-cat-1"
                       value={s.category1}
                       onChange={(e) => {
+                        setAiCategoryAutoFilledNotice(false);
                         s.setCategory1(e.target.value);
                         s.clearProductFieldKey("category");
                       }}
@@ -785,6 +765,7 @@ export function Step2Client() {
                       id="apply-cat-2"
                       value={s.category2}
                       onChange={(e) => {
+                        setAiCategoryAutoFilledNotice(false);
                         s.setCategory2(e.target.value);
                         s.clearProductFieldKey("category");
                       }}
@@ -812,6 +793,7 @@ export function Step2Client() {
                       id="apply-cat-3"
                       value={s.category3}
                       onChange={(e) => {
+                        setAiCategoryAutoFilledNotice(false);
                         s.clearProductFieldKey("category");
                         s.setCategory3(e.target.value);
                       }}
