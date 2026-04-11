@@ -854,7 +854,7 @@ export function Step2Client() {
                       );
                     }
                   }}
-                  className="w-full rounded-lg bg-emerald-950 px-4 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  className="w-full cursor-pointer rounded-lg bg-emerald-950 px-4 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   카테고리 최종 확인
                 </button>
@@ -944,7 +944,7 @@ export function Step2Client() {
                           type="button"
                           disabled={s.isAddingProduct}
                           onClick={() => removeLabelFile(index)}
-                          className="shrink-0 cursor-pointer text-xs font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed"
+                          className="shrink-0 cursor-pointer text-xs font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           삭제
                         </button>
