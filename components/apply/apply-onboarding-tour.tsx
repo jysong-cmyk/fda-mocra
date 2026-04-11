@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ACTIONS,
   EVENTS,
   Joyride,
   ORIGIN,
@@ -11,11 +12,17 @@ import {
   type Options,
   type Step,
 } from "react-joyride";
+import {
+  APPLY_TUTORIAL_RESUME_EVENT,
+  dispatchTutorialCompleted,
+  dispatchTutorialRestarted,
+  readTutorialDoneFromStorage,
+  TUTORIAL_STORAGE_KEY,
+} from "@/lib/apply/tutorial-constants";
 import { useApplyStore, type ApplyStore } from "@/stores/apply-store";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const TUTORIAL_STORAGE_KEY = "tutorial_completed";
 const CONTINUE_SESSION_KEY = "aicra_apply_tour_continue";
 
 /** Tab/Enter로 자동 Next 하지 않는 스텝 (v3: overlay/ESC는 overlayClickAction·dismissKeyAction 사용) */
@@ -77,17 +84,14 @@ export function calculateSmartStep(
 }
 
 function readTutorialDone(): boolean {
-  try {
-    return localStorage.getItem(TUTORIAL_STORAGE_KEY) === "true";
-  } catch {
-    return true;
-  }
+  return readTutorialDoneFromStorage();
 }
 
 function persistTutorialDone() {
   try {
     localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
     sessionStorage.removeItem(CONTINUE_SESSION_KEY);
+    dispatchTutorialCompleted();
   } catch {
     /* ignore */
   }
@@ -198,14 +202,6 @@ const stepsPart2: Step[] = [
   },
 ];
 
-const joyrideLocale = {
-  back: "이전",
-  close: "닫기",
-  last: "완료",
-  next: "다음",
-  skip: "튜토리얼 종료",
-};
-
 const joyrideStyles = {
   tooltip: {
     borderRadius: 12,
@@ -225,6 +221,9 @@ const joyrideStyles = {
     lineHeight: 1.55,
     padding: 0,
   },
+  tooltipFooter: {
+    marginTop: 14,
+  },
   buttonPrimary: {
     backgroundColor: "#022c22",
     color: "#fef3c7",
@@ -240,9 +239,14 @@ const joyrideStyles = {
     marginRight: 8,
   },
   buttonSkip: {
-    color: "#57534e",
-    fontWeight: 600,
+    marginTop: 4,
+    border: "1px solid #d1d5db",
+    borderRadius: 4,
+    padding: "6px 12px",
     fontSize: 13,
+    color: "#4b5563",
+    backgroundColor: "#f9fafb",
+    fontWeight: 600,
   },
   buttonClose: {
     color: "#57534e",
@@ -283,7 +287,6 @@ function initialStep1Phase(): Step1Phase {
 
 export function ApplyOnboardingTour() {
   const pathname = usePathname();
-  const router = useRouter();
   const isAgreementModalOpen = useApplyStore((s) => s.isAgreementModalOpen);
   const isAgreed = useApplyStore((s) => s.isAgreed);
 
@@ -314,6 +317,20 @@ export function ApplyOnboardingTour() {
     if (pathname === "/apply/step2") return stepsPart2;
     return [];
   }, [pathname, step1Phase]);
+
+  const joyrideLocale = useMemo(
+    () => ({
+      back: "이전",
+      close: "닫기",
+      last:
+        pathname === "/apply/step1" && step1Phase === "modal"
+          ? "적용하기"
+          : "입력하기",
+      next: "다음",
+      skip: "튜토리얼 종료",
+    }),
+    [pathname, step1Phase],
+  );
 
   const runRef = useRef(run);
   const stepsRef = useRef(steps);
@@ -604,7 +621,18 @@ export function ApplyOnboardingTour() {
     setRun(false);
     setJoyrideCycle((c) => c + 1);
     window.setTimeout(() => setRun(true), 120);
+    dispatchTutorialRestarted();
   }, [pathname]);
+
+  useEffect(() => {
+    const onResume = () => {
+      handleSmartResume();
+    };
+    window.addEventListener(APPLY_TUTORIAL_RESUME_EVENT, onResume);
+    return () => {
+      window.removeEventListener(APPLY_TUTORIAL_RESUME_EVENT, onResume);
+    };
+  }, [handleSmartResume]);
 
   const onEvent = useCallback<EventHandler>(
     (data, controls) => {
@@ -619,6 +647,18 @@ export function ApplyOnboardingTour() {
       }
 
       if (data.status !== STATUS.FINISHED) return;
+
+      const isLastStep = data.index === data.size - 1;
+      if (isLastStep && data.action === ACTIONS.NEXT) {
+        const rawTarget = data.step?.target;
+        if (typeof rawTarget === "string") {
+          try {
+            document.querySelector<HTMLElement>(rawTarget)?.click();
+          } catch {
+            /* ignore */
+          }
+        }
+      }
 
       if (pathname === "/apply/step1") {
         const phase = step1PhaseRef.current;
@@ -649,7 +689,6 @@ export function ApplyOnboardingTour() {
         if (phase === "rp") {
           setRun(false);
           setContinueFlag();
-          router.push("/apply/step2");
         }
         return;
       }
@@ -660,45 +699,25 @@ export function ApplyOnboardingTour() {
         setRun(false);
       }
     },
-    [pathname, router],
+    [pathname],
   );
 
-  const showSmartResumeFab =
-    mounted &&
-    (pathname === "/apply/step1" || pathname === "/apply/step2") &&
-    readTutorialDone();
-  const showJoyride = mounted && !tutorialDone && steps.length > 0;
-
-  if (!showJoyride && !showSmartResumeFab) {
+  if (!mounted || tutorialDone || steps.length === 0) {
     return null;
   }
 
   return (
-    <>
-      {showSmartResumeFab ? (
-        <button
-          type="button"
-          aria-label="튜토리얼 다시 시작"
-          className="fixed bottom-24 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-amber-700/40 bg-[#fffbeb] text-lg font-bold text-[#022c22] shadow-lg transition hover:bg-amber-50"
-          onClick={handleSmartResume}
-        >
-          ?
-        </button>
-      ) : null}
-      {showJoyride ? (
-        <Joyride
-          key={`${pathname}-${step1Phase}-${joyrideCycle}-${steps.length}-${joyrideStartIndex}`}
-          run={run}
-          steps={steps}
-          continuous
-          scrollToFirstStep
-          initialStepIndex={joyrideStartIndex}
-          locale={joyrideLocale}
-          styles={joyrideStyles}
-          options={{ ...joyrideOptionsAboveModal }}
-          onEvent={onEvent}
-        />
-      ) : null}
-    </>
+    <Joyride
+      key={`${pathname}-${step1Phase}-${joyrideCycle}-${steps.length}-${joyrideStartIndex}`}
+      run={run}
+      steps={steps}
+      continuous
+      scrollToFirstStep
+      initialStepIndex={joyrideStartIndex}
+      locale={joyrideLocale}
+      styles={joyrideStyles}
+      options={{ ...joyrideOptionsAboveModal }}
+      onEvent={onEvent}
+    />
   );
 }
