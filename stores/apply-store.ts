@@ -30,6 +30,7 @@ export type ApplyStore = {
   category1: string;
   category2: string;
   category3: string;
+  isCategoryConfirmed: boolean;
   feiNumber: string;
   feiError: string;
   labelFiles: File[];
@@ -69,6 +70,7 @@ export type ApplyStore = {
   setCategory1: (v: string) => void;
   setCategory2: (v: string) => void;
   setCategory3: (v: string) => void;
+  setIsCategoryConfirmed: (v: boolean) => void;
   setFeiNumber: (v: string) => void;
   setFeiError: (v: string) => void;
   setLabelFiles: (v: File[] | ((prev: File[]) => File[])) => void;
@@ -131,6 +133,7 @@ export type ApplyPersistedState = {
   category1: string;
   category2: string;
   category3: string;
+  isCategoryConfirmed: boolean;
   feiNumber: string;
   feiError: string;
   ingredientFileMeta: { name: string; size: number; type: string } | null;
@@ -181,6 +184,7 @@ const initialProductDraft = {
   category1: "",
   category2: "",
   category3: "",
+  isCategoryConfirmed: false,
   feiNumber: "",
   feiError: "",
   labelFiles: [] as File[],
@@ -239,9 +243,11 @@ export const useApplyStore = create<ApplyStore>()(
   setAgreementModalOpen: (v) => set({ isAgreementModalOpen: v }),
 
   setProductNameEn: (v) => set({ productNameEn: v }),
-  setCategory1: (v) => set({ category1: v, category2: "", category3: "" }),
-  setCategory2: (v) => set({ category2: v, category3: "" }),
-  setCategory3: (v) => set({ category3: v }),
+  setCategory1: (v) =>
+    set({ category1: v, category2: "", category3: "", isCategoryConfirmed: false }),
+  setCategory2: (v) => set({ category2: v, category3: "", isCategoryConfirmed: false }),
+  setCategory3: (v) => set({ category3: v, isCategoryConfirmed: false }),
+  setIsCategoryConfirmed: (v) => set({ isCategoryConfirmed: v }),
   setFeiNumber: (v) => set({ feiNumber: v }),
   setFeiError: (v) => set({ feiError: v }),
   setLabelFiles: (v) =>
@@ -326,6 +332,7 @@ export const useApplyStore = create<ApplyStore>()(
       category1: line.category1,
       category2: line.category2,
       category3: line.category3,
+      isCategoryConfirmed: true,
       feiNumber: line.feiNumber,
       feiError: "",
       ingredientText: line.ingredientText,
@@ -376,6 +383,7 @@ export const useApplyStore = create<ApplyStore>()(
         category1: state.category1,
         category2: state.category2,
         category3: state.category3,
+        isCategoryConfirmed: state.isCategoryConfirmed,
         feiNumber: state.feiNumber,
         feiError: state.feiError,
         ingredientFileMeta: state.ingredientFileMeta,
@@ -419,6 +427,7 @@ export const useApplyStore = create<ApplyStore>()(
           ...p,
           sessionId,
           cartLines: mergedLines,
+          isCategoryConfirmed: p.isCategoryConfirmed === true,
           ...transient,
         };
       },

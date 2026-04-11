@@ -4,6 +4,14 @@ export const TUTORIAL_STORAGE_KEY = "tutorial_completed";
 export const APPLY_TUTORIAL_CONTINUE_SESSION_KEY = "aicra_apply_tour_continue";
 
 export const APPLY_TUTORIAL_RESUME_EVENT = "aicra-apply-tutorial-resume";
+
+/** Step2: 카테고리 AI 검색 요청이 끝난 뒤(성공/실패) 투어가 검색 스텝이면 다음 스텝으로 진행 */
+export const APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT =
+  "aicra-apply-tutorial-ai-search-finished";
+
+/** Step2: 카테고리 최종 확인 버튼 클릭 후 투어 다음 스텝(FEI)으로 진행 */
+export const APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT =
+  "aicra-apply-tutorial-category-confirm-next";
 export const APPLY_TUTORIAL_COMPLETED_EVENT = "aicra-tutorial-completed";
 export const APPLY_TUTORIAL_RESTARTED_EVENT = "aicra-tutorial-restarted";
 

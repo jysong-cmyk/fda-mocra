@@ -1,7 +1,7 @@
 "use client";
 
 import { saveApplyProductAction } from "@/app/apply/save-product-action";
-import { fdaCategories } from "@/app/fdaCategories";
+import { fdaCategories, isFdaCategorySelectionComplete } from "@/app/fdaCategories";
 import { AgreementModal } from "@/components/apply/agreement-modal";
 import { ApplyFooter } from "@/components/apply/apply-footer";
 import { IconShoppingCart } from "@/components/apply/icon-cart";
@@ -18,7 +18,11 @@ import {
   pathLabelFrom,
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
-import { persistApplyTutorialDone } from "@/lib/apply/tutorial-constants";
+import {
+  APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
+  APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
+  persistApplyTutorialDone,
+} from "@/lib/apply/tutorial-constants";
 import { APPLY_SAVE_PRODUCT_FIELD } from "@/lib/apply/save-product-server-validation";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
@@ -229,6 +233,11 @@ export function Step2Client() {
       );
     } finally {
       useApplyStore.getState().setAiSearchLoading(false);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT),
+        );
+      }
     }
   }, []);
 
@@ -353,7 +362,14 @@ export function Step2Client() {
     if (st.productNameEn.trim() === "" || st.productNameEnError) {
       nextErr.productNameEn = true;
     }
-    if (st.category1 === "" || st.category2 === "" || st.category3 === "") {
+    if (
+      !isFdaCategorySelectionComplete(
+        st.category1,
+        st.category2,
+        st.category3,
+      ) ||
+      !st.isCategoryConfirmed
+    ) {
       nextErr.category = true;
     }
     if (st.feiNumber.trim() === "") nextErr.fei = true;
@@ -683,29 +699,12 @@ export function Step2Client() {
                         </p>
                       </div>
                     ) : s.aiRecommendation != null ? (
-                      <>
-                        <p>
-                          <span className="font-semibold text-emerald-900">
-                            추천 결과:
-                          </span>{" "}
-                          {s.aiRecommendation.pathLabel}
-                        </p>
-                        <button
-                          type="button"
-                          disabled={s.isAddingProduct}
-                          onClick={() => {
-                            if (s.aiRecommendation == null) return;
-                            s.setCategory1(s.aiRecommendation.category1);
-                            s.setCategory2(s.aiRecommendation.category2);
-                            s.setCategory3(s.aiRecommendation.category3);
-                            s.setAiRecommendation(null);
-                            s.clearProductFieldKey("category");
-                          }}
-                          className="mt-2 w-full cursor-pointer rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
-                        >
-                          선택
-                        </button>
-                      </>
+                      <p>
+                        <span className="font-semibold text-emerald-900">
+                          추천 결과:
+                        </span>{" "}
+                        {s.aiRecommendation.pathLabel}
+                      </p>
                     ) : null}
                     </>
                   ) : (
@@ -713,11 +712,38 @@ export function Step2Client() {
                       분류명을 입력한 뒤 「검색」을 누르면 여기에 AI 추천이 표시됩니다.
                     </p>
                   )}
+                  <div className="mt-3 border-t border-amber-100/80 pt-3">
+                    <button
+                      id="apply-ai-recommendation-apply"
+                      type="button"
+                      disabled={
+                        s.isAddingProduct ||
+                        s.aiSearchLoading ||
+                        s.aiRecommendation == null
+                      }
+                      onClick={() => {
+                        const st = useApplyStore.getState();
+                        if (st.aiRecommendation == null) return;
+                        st.setCategory1(st.aiRecommendation.category1);
+                        st.setCategory2(st.aiRecommendation.category2);
+                        st.setCategory3(st.aiRecommendation.category3);
+                        st.setAiRecommendation(null);
+                        st.clearProductFieldKey("category");
+                      }}
+                      className="w-full cursor-pointer rounded-lg bg-emerald-950 py-2 text-sm font-semibold text-stone-50 hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4"
+                    >
+                      선택
+                    </button>
+                  </div>
                 </div>
 
                 <div
+                  id="tour-step-2-category-review"
+                  className="mt-6 space-y-3"
+                >
+                <div
                   id="tour-step-2-categories"
-                  className={`mt-6 grid grid-cols-1 gap-3 rounded-lg sm:grid-cols-3 ${
+                  className={`grid grid-cols-1 gap-3 rounded-lg sm:grid-cols-3 ${
                     s.productFieldError.category === true
                       ? "p-2 ring-2 ring-red-400 ring-offset-2"
                       : ""
@@ -802,6 +828,36 @@ export function Step2Client() {
                       ))}
                     </select>
                   </div>
+                </div>
+                <button
+                  id="apply-category-confirm-btn"
+                  type="button"
+                  disabled={s.isAddingProduct}
+                  onClick={() => {
+                    const st = useApplyStore.getState();
+                    if (
+                      !isFdaCategorySelectionComplete(
+                        st.category1,
+                        st.category2,
+                        st.category3,
+                      )
+                    ) {
+                      alert("대/중/소 분류를 모두 선택해 주세요.");
+                      return;
+                    }
+                    st.setIsCategoryConfirmed(true);
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(
+                        new CustomEvent(
+                          APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
+                        ),
+                      );
+                    }
+                  }}
+                  className="w-full rounded-lg bg-emerald-950 px-4 py-3 text-sm font-semibold text-stone-50 shadow-sm transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  카테고리 최종 확인
+                </button>
                 </div>
               </div>
 
