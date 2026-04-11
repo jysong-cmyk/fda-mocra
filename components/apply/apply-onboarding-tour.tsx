@@ -219,6 +219,8 @@ const joyrideOptionsAboveModal: Partial<Options> = {
   overlayClickAction: false,
   /** Esc로 닫히지 않도록 (구 API disableCloseOnEsc와 동등) */
   dismissKeyAction: false,
+  /** 툴팁/다음 버튼으로 포커스를 가져가지 않음 (v3: 구 disableAutoFocus에 해당) */
+  disableFocusTrap: true,
 };
 
 function initialStep1Phase(): Step1Phase {
@@ -267,6 +269,8 @@ export function ApplyOnboardingTour() {
 
   useEffect(() => {
     if (!run || steps.length === 0) return;
+
+    const pendingFocusTimeouts: number[] = [];
 
     const resolveTargetEl = (target: Step["target"]): HTMLElement | null => {
       if (typeof target === "string") {
@@ -335,11 +339,27 @@ export function ApplyOnboardingTour() {
       if (e.key === "Enter") {
         e.preventDefault();
       }
+
+      const nextStep = stepList[state.index + 1];
       controls.next(ORIGIN.KEYBOARD);
+
+      if (!nextStep) return;
+
+      const focusDelayMs = 75;
+      const tid = window.setTimeout(() => {
+        const nextEl = resolveTargetEl(nextStep.target);
+        nextEl?.focus({ preventScroll: true });
+      }, focusDelayMs);
+      pendingFocusTimeouts.push(tid as number);
     };
 
     window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      for (const tid of pendingFocusTimeouts) {
+        window.clearTimeout(tid);
+      }
+    };
   }, [run, steps.length]);
 
   /** 이미 동의(신청자 정보 저장)까지 끝난 경우 CTA를 건너뛰고 메인 폼 투어부터 */
