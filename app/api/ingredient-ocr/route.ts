@@ -147,99 +147,119 @@ async function openaiExtractFromPdfText(
   return raw.choices?.[0]?.message?.content?.trim() ?? "";
 }
 
+function backendFatalDetail(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message !== "" ? error.message : error.toString();
+  }
+  if (typeof error === "string") return error;
+  try {
+    return String(error);
+  } catch {
+    return "알 수 없는 오류";
+  }
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (apiKey == null || apiKey === "") {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (apiKey == null || apiKey === "") {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY is not configured." },
+        { status: 500 },
+      );
+    }
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return NextResponse.json({ error: "Invalid form data." }, { status: 400 });
+    }
+
+    const file = formData.get("image");
+    if (!(file instanceof File) || file.size === 0) {
+      return NextResponse.json(
+        { error: "성분표 파일(image 필드)이 필요합니다." },
+        { status: 400 },
+      );
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json(
+        { error: "파일은 15MB 이하만 업로드할 수 있습니다." },
+        { status: 400 },
+      );
+    }
+
+    const buf = Buffer.from(await file.arrayBuffer());
+    const effectiveMime = resolveEffectiveMime(file, buf);
+
+    if (!isAllowedIngredientMime(effectiveMime)) {
+      return NextResponse.json(
+        {
+          error:
+            "PNG, JPEG, JPG, PDF 형식만 업로드할 수 있습니다.",
+        },
+        { status: 400 },
+      );
+    }
+
+    let modelRaw = "";
+
+    try {
+      if (effectiveMime === "application/pdf") {
+        let pdfText: string;
+        try {
+          pdfText = await extractPdfPlainText(buf);
+        } catch (e) {
+          console.error("pdf-parse failed", e);
+          return NextResponse.json(
+            {
+              error:
+                "PDF를 읽는 중 오류가 발생했습니다. 파일이 손상되지 않았는지 확인 후 다시 시도해 주세요.",
+            },
+            { status: 422 },
+          );
+        }
+
+        if (pdfText.replace(/\s/g, "").length === 0) {
+          return NextResponse.json(
+            {
+              error:
+                "텍스트가 없어서 성분을 확인할 수 없습니다. 텍스트가 포함된 문서나 이미지로 다시 업로드해 주세요.",
+            },
+            { status: 422 },
+          );
+        }
+
+        modelRaw = await openaiExtractFromPdfText(apiKey, pdfText);
+      } else {
+        const mimeForDataUrl =
+          effectiveMime === "image/jpg" ? "image/jpeg" : effectiveMime;
+        const dataUrl = `data:${mimeForDataUrl};base64,${buf.toString("base64")}`;
+        modelRaw = await openaiExtractFromImage(apiKey, dataUrl);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "OpenAI request failed";
+      return NextResponse.json({ error: msg }, { status: 502 });
+    }
+
+    const text = normalizeModelIngredientOutput(modelRaw);
+    if (text === "") {
+      return NextResponse.json(
+        {
+          error:
+            "성분 추출 결과가 비었습니다. 더 선명한 파일로 다시 시도해 주세요.",
+        },
+        { status: 422 },
+      );
+    }
+
+    return NextResponse.json({ text });
+  } catch (error: unknown) {
+    console.error("OCR API 백엔드 치명적 오류:", error);
     return NextResponse.json(
-      { error: "OPENAI_API_KEY is not configured." },
+      { error: `백엔드 상세 오류: ${backendFatalDetail(error)}` },
       { status: 500 },
     );
   }
-
-  let formData: FormData;
-  try {
-    formData = await request.formData();
-  } catch {
-    return NextResponse.json({ error: "Invalid form data." }, { status: 400 });
-  }
-
-  const file = formData.get("image");
-  if (!(file instanceof File) || file.size === 0) {
-    return NextResponse.json(
-      { error: "성분표 파일(image 필드)이 필요합니다." },
-      { status: 400 },
-    );
-  }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json(
-      { error: "파일은 15MB 이하만 업로드할 수 있습니다." },
-      { status: 400 },
-    );
-  }
-
-  const buf = Buffer.from(await file.arrayBuffer());
-  const effectiveMime = resolveEffectiveMime(file, buf);
-
-  if (!isAllowedIngredientMime(effectiveMime)) {
-    return NextResponse.json(
-      {
-        error:
-          "PNG, JPEG, JPG, PDF 형식만 업로드할 수 있습니다.",
-      },
-      { status: 400 },
-    );
-  }
-
-  let modelRaw = "";
-
-  try {
-    if (effectiveMime === "application/pdf") {
-      let pdfText: string;
-      try {
-        pdfText = await extractPdfPlainText(buf);
-      } catch (e) {
-        console.error("pdf-parse failed", e);
-        return NextResponse.json(
-          {
-            error:
-              "PDF를 읽는 중 오류가 발생했습니다. 파일이 손상되지 않았는지 확인 후 다시 시도해 주세요.",
-          },
-          { status: 422 },
-        );
-      }
-
-      if (pdfText.replace(/\s/g, "").length === 0) {
-        return NextResponse.json(
-          {
-            error:
-              "텍스트가 없어서 성분을 확인할 수 없습니다. 텍스트가 포함된 문서나 이미지로 다시 업로드해 주세요.",
-          },
-          { status: 422 },
-        );
-      }
-
-      modelRaw = await openaiExtractFromPdfText(apiKey, pdfText);
-    } else {
-      const mimeForDataUrl =
-        effectiveMime === "image/jpg" ? "image/jpeg" : effectiveMime;
-      const dataUrl = `data:${mimeForDataUrl};base64,${buf.toString("base64")}`;
-      modelRaw = await openaiExtractFromImage(apiKey, dataUrl);
-    }
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "OpenAI request failed";
-    return NextResponse.json({ error: msg }, { status: 502 });
-  }
-
-  const text = normalizeModelIngredientOutput(modelRaw);
-  if (text === "") {
-    return NextResponse.json(
-      {
-        error:
-          "성분 추출 결과가 비었습니다. 더 선명한 파일로 다시 시도해 주세요.",
-      },
-      { status: 422 },
-    );
-  }
-
-  return NextResponse.json({ text });
 }
