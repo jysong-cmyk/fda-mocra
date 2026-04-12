@@ -644,6 +644,7 @@ export function Step2Client() {
         return;
       }
 
+      // Joyride: localStorage 완료 + APPLY_TUTORIAL_COMPLETED_EVENT → ApplyOnboardingTour에서 run=false·언마운트(성공 모달 클릭 가능)
       persistApplyTutorialDone();
 
       if (res.mode === "edit") {

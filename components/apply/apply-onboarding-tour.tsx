@@ -23,6 +23,7 @@ import { isFdaCategorySelectionComplete } from "@/app/fdaCategories";
 import {
   APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
   APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
+  APPLY_TUTORIAL_COMPLETED_EVENT,
   APPLY_TUTORIAL_CONTINUE_SESSION_KEY,
   APPLY_TUTORIAL_INGREDIENT_CONFIRMED_EVENT,
   APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
@@ -678,6 +679,26 @@ export function ApplyOnboardingTour() {
   useEffect(() => {
     setMounted(true);
     setTutorialDone(readTutorialDone());
+  }, []);
+
+  /** 목록 저장 성공 등 `persistApplyTutorialDone`만 호출되고 Joyride FINISHED가 안 오는 경우 오버레이 즉시 제거 */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onTutorialCompleted = () => {
+      setRun(false);
+      setInputGuardIssue(null);
+      setTutorialDone(true);
+    };
+    window.addEventListener(
+      APPLY_TUTORIAL_COMPLETED_EVENT,
+      onTutorialCompleted,
+    );
+    return () => {
+      window.removeEventListener(
+        APPLY_TUTORIAL_COMPLETED_EVENT,
+        onTutorialCompleted,
+      );
+    };
   }, []);
 
   const steps = useMemo(() => {
