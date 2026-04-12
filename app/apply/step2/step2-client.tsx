@@ -10,9 +10,12 @@ import { Ag, ApplyFieldLabel } from "@/components/apply/field-label";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
 import { AicraHeader } from "@/components/aicra-header";
 import {
+  FEI_FORMAT_BLUR_ALERT,
+  INTERNATIONAL_PHONE_BLUR_ALERT,
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
   isFeiNumberValid,
+  isInternationalPhoneFormatValid,
 } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
@@ -521,22 +524,22 @@ export function Step2Client() {
       alert("제조사 FEI 번호는 숫자 10자리로 입력해 주세요.");
       return;
     }
-    const phoneApplicantBad =
+    if (
       st.applicantPhone.trim() !== "" &&
-      !isApplicantPhoneFormatValid(st.applicantPhone);
-    const phoneRpBad =
-      st.rpContact.trim() !== "" &&
-      !isApplicantPhoneFormatValid(st.rpContact);
-    if (phoneApplicantBad || phoneRpBad) {
-      if (phoneApplicantBad) {
-        st.setPhoneError(
-          "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
-        );
-      }
-      if (phoneRpBad) {
-        st.setRpContactError(true);
-      }
+      !isApplicantPhoneFormatValid(st.applicantPhone)
+    ) {
+      st.setPhoneError(
+        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+      );
       alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
+      return;
+    }
+    if (
+      st.rpContact.trim() !== "" &&
+      !isInternationalPhoneFormatValid(st.rpContact)
+    ) {
+      st.setRpContactError(true);
+      alert(INTERNATIONAL_PHONE_BLUR_ALERT);
       return;
     }
     if (
@@ -717,6 +720,15 @@ export function Step2Client() {
                       v.length > 0 && !RP_PRODUCT_NAME_REGEX.test(v),
                     );
                   }}
+                  onBlur={(e) => {
+                    const el = e.currentTarget;
+                    const v = el.value;
+                    if (v.trim() === "") return;
+                    if (v.length > 0 && !RP_PRODUCT_NAME_REGEX.test(v)) {
+                      useApplyStore.getState().setProductNameEnError(true);
+                      window.setTimeout(() => el.focus(), 0);
+                    }
+                  }}
                   disabled={s.isAddingProduct}
                   className={`tour-step-3 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50 ${
                     s.productFieldError.productNameEn === true ||
@@ -750,6 +762,15 @@ export function Step2Client() {
                       s.setAiCategoryQueryError(
                         v.length > 0 && !AI_CATEGORY_QUERY_REGEX.test(v),
                       );
+                    }}
+                    onBlur={(e) => {
+                      const el = e.currentTarget;
+                      const v = el.value;
+                      if (v.trim() === "") return;
+                      if (v.length > 0 && !AI_CATEGORY_QUERY_REGEX.test(v)) {
+                        useApplyStore.getState().setAiCategoryQueryError(true);
+                        window.setTimeout(() => el.focus(), 0);
+                      }
                     }}
                     disabled={s.isAddingProduct}
                     className={`min-w-0 flex-1 rounded-xl border-2 bg-stone-50/80 px-4 py-3 text-sm text-zinc-900 shadow-sm outline-none transition-[border-color,box-shadow] placeholder:text-zinc-500 focus:border-emerald-800 focus:bg-white focus:ring-2 focus:ring-amber-400/25 disabled:opacity-60 ${
@@ -1007,6 +1028,14 @@ export function Step2Client() {
                     }
                     s.setFeiNumber(sanitized);
                   }}
+                  onBlur={(e) => {
+                    const el = e.currentTarget;
+                    if (el.value.trim() === "") return;
+                    if (!isFeiNumberValid(el.value)) {
+                      useApplyStore.getState().setFeiError(FEI_FORMAT_BLUR_ALERT);
+                      window.setTimeout(() => el.focus(), 0);
+                    }
+                  }}
                   disabled={s.isAddingProduct}
                   className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none disabled:bg-zinc-50 ${
                     s.productFieldError.fei === true || s.feiError !== ""
@@ -1016,7 +1045,7 @@ export function Step2Client() {
                   placeholder="숫자 10자리 입력"
                 />
                 {s.feiError ? (
-                  <p className="mt-1 text-xs text-red-500">{s.feiError}</p>
+                  <p className="mt-1 text-sm text-red-500">{s.feiError}</p>
                 ) : null}
               </div>
 

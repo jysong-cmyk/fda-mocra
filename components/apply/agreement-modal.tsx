@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  APPLICANT_FORMAT_BLUR_ALERT,
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
 } from "@/lib/apply/applicant-contact-validation";
@@ -232,6 +233,13 @@ export function AgreementModal() {
                 setApplicantName(sanitized);
                 clearCommonRequiredKey("applicantName");
               }}
+              onBlur={(e) => {
+                const el = e.currentTarget;
+                if (el.value.trim() === "") return;
+                if (useApplyStore.getState().nameError !== "") {
+                  window.setTimeout(() => el.focus(), 0);
+                }
+              }}
               className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 nameError !== "" || commonRequiredError.applicantName === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
@@ -240,7 +248,7 @@ export function AgreementModal() {
               placeholder="사업자등록증상의 기업명을 입력해주세요"
             />
             {nameError ? (
-              <p className="mt-1 text-xs text-red-500">{nameError}</p>
+              <p className="mt-1 text-sm text-red-500">{nameError}</p>
             ) : null}
           </div>
           <div>
@@ -266,6 +274,19 @@ export function AgreementModal() {
                 setApplicantPhone(sanitized);
                 clearCommonRequiredKey("applicantPhone");
               }}
+              onBlur={(e) => {
+                const el = e.currentTarget;
+                if (el.value.trim() === "") return;
+                if (!isApplicantPhoneFormatValid(el.value)) {
+                  setPhoneError(APPLICANT_FORMAT_BLUR_ALERT);
+                  window.setTimeout(() => el.focus(), 0);
+                } else if (
+                  useApplyStore.getState().phoneError ===
+                  APPLICANT_FORMAT_BLUR_ALERT
+                ) {
+                  setPhoneError("");
+                }
+              }}
               className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 phoneError !== "" || commonRequiredError.applicantPhone === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
@@ -274,7 +295,7 @@ export function AgreementModal() {
               placeholder="예: 010-1234-5678 또는 02-123-4567"
             />
             {phoneError ? (
-              <p className="mt-1 text-xs text-red-500">{phoneError}</p>
+              <p className="mt-1 text-sm text-red-500">{phoneError}</p>
             ) : null}
           </div>
           <div>
@@ -300,6 +321,19 @@ export function AgreementModal() {
                 setApplicantEmail(sanitized);
                 clearCommonRequiredKey("applicantEmail");
               }}
+              onBlur={(e) => {
+                const el = e.currentTarget;
+                if (el.value.trim() === "") return;
+                if (!isApplicantEmailFormatValid(el.value)) {
+                  setEmailError(APPLICANT_FORMAT_BLUR_ALERT);
+                  window.setTimeout(() => el.focus(), 0);
+                } else if (
+                  useApplyStore.getState().emailError ===
+                  APPLICANT_FORMAT_BLUR_ALERT
+                ) {
+                  setEmailError("");
+                }
+              }}
               className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 ${
                 emailError !== "" || commonRequiredError.applicantEmail === true
                   ? "border-red-500 ring-2 ring-red-200 focus:border-red-500 focus:ring-red-200"
@@ -308,7 +342,7 @@ export function AgreementModal() {
               placeholder="example@email.com"
             />
             {emailError ? (
-              <p className="mt-1 text-xs text-red-500">{emailError}</p>
+              <p className="mt-1 text-sm text-red-500">{emailError}</p>
             ) : null}
           </div>
         </div>

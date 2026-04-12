@@ -13,9 +13,11 @@ import {
   type TooltipRenderProps,
 } from "react-joyride";
 import {
+  INTERNATIONAL_PHONE_BLUR_ALERT,
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
   isFeiNumberValid,
+  isInternationalPhoneFormatValid,
 } from "@/lib/apply/applicant-contact-validation";
 import { isFdaCategorySelectionComplete } from "@/app/fdaCategories";
 import {
@@ -71,6 +73,7 @@ const INPUT_GUARD_TARGETS = new Set<string>([
 type InputGuardKind =
   | "empty"
   | "format-phone"
+  | "format-phone-intl"
   | "format-email"
   | "format-fei"
   | "tour-category"
@@ -146,8 +149,8 @@ function evaluateInputGuard(
   if (selector === "#tour-step-rp-contact") {
     const v = getTourFieldValue(selector);
     if (!v) return { ok: false, kind: "empty" };
-    if (!isApplicantPhoneFormatValid(v))
-      return { ok: false, kind: "format-phone" };
+    if (!isInternationalPhoneFormatValid(v))
+      return { ok: false, kind: "format-phone-intl" };
     return { ok: true };
   }
   if (selector === "#tour-step-1-email") {
@@ -256,6 +259,8 @@ function appendValidationHint(
   const msg =
     kind === "format-phone"
       ? "* 양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-...)"
+      : kind === "format-phone-intl"
+        ? `* ${INTERNATIONAL_PHONE_BLUR_ALERT}`
       : kind === "format-email"
         ? "* 양식에 맞춰 입력해 주세요. (예: example@email.com)"
         : kind === "format-fei"

@@ -7,18 +7,21 @@ import { ApplyFieldLabel } from "@/components/apply/field-label";
 import { RegisterAiTrustStrip } from "@/components/apply/register-ai-trust-strip";
 import { AicraHeader } from "@/components/aicra-header";
 import {
+  INTERNATIONAL_PHONE_BLUR_ALERT,
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
+  isInternationalPhoneFormatValid,
 } from "@/lib/apply/applicant-contact-validation";
 import type { CommonRequiredKey } from "@/lib/apply/types-and-constants";
 import { useApplyStore } from "@/stores/apply-store";
 import { useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ApplyCardHeader, ApplyShell } from "../apply-shell";
 
 const kb = "break-keep text-balance" as const;
 
 export function Step1Client() {
+  const [rpPhoneBlurHint, setRpPhoneBlurHint] = useState<string | null>(null);
   const router = useRouter();
   const isAgreed = useApplyStore((s) => s.isAgreed);
   const setAgreementModalOpen = useApplyStore((s) => s.setAgreementModalOpen);
@@ -69,19 +72,17 @@ export function Step1Client() {
       return;
     }
 
-    // evaluateInputGuard(#tour-step-1-contact, #tour-step-rp-contact, #tour-step-1-email)와 동일
-    const phoneApplicantBad = !isApplicantPhoneFormatValid(st.applicantPhone);
-    const phoneRpBad = !isApplicantPhoneFormatValid(st.rpContact);
-    if (phoneApplicantBad || phoneRpBad) {
-      if (phoneApplicantBad) {
-        st.setPhoneError(
-          "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
-        );
-      }
-      if (phoneRpBad) {
-        st.setRpContactError(true);
-      }
+    // 신청자(동의서): 국내 규칙 / RP 연락처(1단계): 국제 규칙(+) 필수
+    if (!isApplicantPhoneFormatValid(st.applicantPhone)) {
+      st.setPhoneError(
+        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+      );
       alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
+      return;
+    }
+    if (!isInternationalPhoneFormatValid(st.rpContact)) {
+      st.setRpContactError(true);
+      alert(INTERNATIONAL_PHONE_BLUR_ALERT);
       return;
     }
     if (!isApplicantEmailFormatValid(st.applicantEmail)) {
@@ -208,6 +209,13 @@ export function Step1Client() {
                     setRpNameEn(sanitized);
                     clearCommonRequiredKey("rpNameEn");
                   }}
+                  onBlur={(e) => {
+                    const el = e.currentTarget;
+                    if (el.value.trim() === "") return;
+                    if (useApplyStore.getState().rpNameEnError) {
+                      window.setTimeout(() => el.focus(), 0);
+                    }
+                  }}
                   className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
                     rpNameEnError || commonRequiredError.rpNameEn === true
                       ? invalidFieldClass
@@ -236,23 +244,45 @@ export function Step1Client() {
                   value={rpContact}
                   onChange={(e) => {
                     const raw = e.target.value;
-                    const sanitized = raw.replace(/[^0-9-+]/g, "");
+                    const sanitized = raw.replace(/[^0-9+.\- ]/g, "");
                     setRpContactError(raw !== sanitized);
                     setRpContact(sanitized);
+                    setRpPhoneBlurHint(null);
                     clearCommonRequiredKey("rpContact");
                   }}
+                  onBlur={(e) => {
+                    const el = e.currentTarget;
+                    if (el.value.trim() === "") {
+                      setRpPhoneBlurHint(null);
+                      return;
+                    }
+                    if (!isInternationalPhoneFormatValid(el.value)) {
+                      setRpPhoneBlurHint(INTERNATIONAL_PHONE_BLUR_ALERT);
+                      window.setTimeout(() => el.focus(), 0);
+                    } else {
+                      setRpPhoneBlurHint(null);
+                    }
+                  }}
                   className={`w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-shadow placeholder:text-zinc-400 ${
-                    rpContactError || commonRequiredError.rpContact === true
+                    rpContactError ||
+                    rpPhoneBlurHint != null ||
+                    commonRequiredError.rpContact === true
                       ? invalidFieldClass
                       : normalFieldClass
                   }`}
-                  placeholder="예: 010-1234-5678 또는 02-123-4567"
+                  placeholder="+82-10-1234-5678 (국가번호 '+' 필수)"
                 />
-                {rpContactError ? (
+                {rpPhoneBlurHint != null ? (
+                  <p className="mt-1 text-sm text-red-500">{rpPhoneBlurHint}</p>
+                ) : rpContactError ? (
                   <p className="mt-1 text-sm text-red-500">
-                    숫자, 하이픈(-), 플러스(+) 기호만 입력 가능합니다.
+                    숫자, 하이픈(-), 플러스(+), 공백, 점(.)만 입력 가능합니다.
                   </p>
-                ) : null}
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-600">
+                    (국가번호 &apos;+&apos; 필수 포함, 예: +82-10-1234-5678)
+                  </p>
+                )}
               </div>
 
               <div>
