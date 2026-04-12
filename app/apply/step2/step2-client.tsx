@@ -24,6 +24,7 @@ import {
 import {
   APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
   APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
+  APPLY_TUTORIAL_INGREDIENT_CONFIRMED_EVENT,
   APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
   persistApplyTutorialDone,
 } from "@/lib/apply/tutorial-constants";
@@ -1163,6 +1164,13 @@ export function Step2Client() {
                           setOcrReviewState("idle");
                           setIsIngredientConfirmed(true);
                           useApplyStore.getState().setIsIngredientConfirmed(true);
+                          if (typeof window !== "undefined") {
+                            window.dispatchEvent(
+                              new CustomEvent(
+                                APPLY_TUTORIAL_INGREDIENT_CONFIRMED_EVENT,
+                              ),
+                            );
+                          }
                           s.clearProductFieldKey("ingredientConfirm");
                         }}
                         className={`w-full rounded-lg border py-2.5 text-sm font-semibold sm:w-auto sm:px-6 ${
