@@ -51,13 +51,15 @@ export function Step1Client() {
     "border-zinc-200 ring-zinc-400 focus:border-zinc-300 focus:ring-2";
 
   const handleNext = useCallback(() => {
+    const st = useApplyStore.getState();
+
     const err: Partial<Record<CommonRequiredKey, boolean>> = {};
-    if (!isAgreed) err.agreement = true;
-    if (rpNameEn.trim() === "") err.rpNameEn = true;
-    if (rpContact.trim() === "") err.rpContact = true;
-    if (applicantName.trim() === "") err.applicantName = true;
-    if (applicantPhone.trim() === "") err.applicantPhone = true;
-    if (applicantEmail.trim() === "") err.applicantEmail = true;
+    if (!st.isAgreed) err.agreement = true;
+    if (st.rpNameEn.trim() === "") err.rpNameEn = true;
+    if (st.rpContact.trim() === "") err.rpContact = true;
+    if (st.applicantName.trim() === "") err.applicantName = true;
+    if (st.applicantPhone.trim() === "") err.applicantPhone = true;
+    if (st.applicantEmail.trim() === "") err.applicantEmail = true;
 
     if (Object.keys(err).length > 0) {
       setCommonRequiredError(err);
@@ -66,48 +68,47 @@ export function Step1Client() {
       );
       return;
     }
-    const st = useApplyStore.getState();
-    if (!isApplicantPhoneFormatValid(applicantPhone)) {
-      st.setPhoneError(
-        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
-      );
-      alert("신청자 연락처 형식을 확인해 주세요.");
+
+    // evaluateInputGuard(#tour-step-1-contact, #tour-step-rp-contact, #tour-step-1-email)와 동일
+    const phoneApplicantBad = !isApplicantPhoneFormatValid(st.applicantPhone);
+    const phoneRpBad = !isApplicantPhoneFormatValid(st.rpContact);
+    if (phoneApplicantBad || phoneRpBad) {
+      if (phoneApplicantBad) {
+        st.setPhoneError(
+          "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+        );
+      }
+      if (phoneRpBad) {
+        st.setRpContactError(true);
+      }
+      alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
       return;
     }
-    if (!isApplicantEmailFormatValid(applicantEmail)) {
+    if (!isApplicantEmailFormatValid(st.applicantEmail)) {
       st.setEmailError(
         "양식에 맞춰 입력해 주세요. (예: example@email.com)",
       );
-      alert("신청자 이메일 형식을 확인해 주세요.");
+      alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
       return;
     }
-    if (rpNameEnError || rpContactError) {
+
+    if (st.rpNameEnError || st.rpContactError) {
       alert(
         "입력 형식에 오류가 있는 항목이 있습니다. 빨간색 안내 문구를 확인해 주세요.",
       );
       return;
     }
-    const nameErr = useApplyStore.getState().nameError;
-    const phoneErr = useApplyStore.getState().phoneError;
-    const emailErr = useApplyStore.getState().emailError;
-    if (nameErr !== "" || phoneErr !== "" || emailErr !== "") {
+    if (
+      st.nameError !== "" ||
+      st.phoneError !== "" ||
+      st.emailError !== ""
+    ) {
       alert("신청자 정보 입력 형식을 확인해 주세요.");
       return;
     }
     setCommonRequiredError({});
     router.push("/apply/step2");
-  }, [
-    applicantEmail,
-    applicantName,
-    applicantPhone,
-    isAgreed,
-    rpContact,
-    rpNameEn,
-    rpContactError,
-    rpNameEnError,
-    setCommonRequiredError,
-    router,
-  ]);
+  }, [setCommonRequiredError, router]);
 
   return (
     <ApplyShell>

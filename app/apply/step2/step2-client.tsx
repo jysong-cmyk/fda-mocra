@@ -12,6 +12,7 @@ import { AicraHeader } from "@/components/aicra-header";
 import {
   isApplicantEmailFormatValid,
   isApplicantPhoneFormatValid,
+  isFeiNumberValid,
 } from "@/lib/apply/applicant-contact-validation";
 import {
   AI_CATEGORY_QUERY_REGEX,
@@ -462,7 +463,7 @@ export function Step2Client() {
 
   const runAddOrEdit = useCallback(async () => {
     const st = useApplyStore.getState();
-    if (st.ingredientText.trim() !== "" && !isIngredientConfirmed) {
+    if (st.ingredientText.trim() !== "" && !st.isIngredientConfirmed) {
       alert(
         "추출된 성분 내용을 확인하신 후 [성분표 확인] 버튼을 눌러주세요.",
       );
@@ -497,7 +498,7 @@ export function Step2Client() {
       if (st.ingredientFileMeta === null) nextErr.ingredientImage = true;
     }
     if (st.ingredientText.trim() === "") nextErr.ingredientText = true;
-    if (!isIngredientConfirmed) nextErr.ingredientConfirm = true;
+    if (!st.isIngredientConfirmed) nextErr.ingredientConfirm = true;
 
     const hasCommon = Object.keys(commonErr).length > 0;
     const hasProduct = Object.keys(nextErr).length > 0;
@@ -513,18 +514,29 @@ export function Step2Client() {
       );
       return;
     }
-    if (st.rpNameEnError || st.rpContactError) {
-      alert("입력 형식 오류가 있습니다. RP 항목을 확인해 주세요.");
+    // 튜토리얼 evaluateInputGuard와 동일한 1차 형식 검사 (스토어 최신값)
+    const feiTrim = st.feiNumber.trim();
+    if (feiTrim !== "" && !isFeiNumberValid(st.feiNumber)) {
+      st.setFeiError("FEI 번호는 숫자 10자리로 입력해 주세요.");
+      alert("제조사 FEI 번호는 숫자 10자리로 입력해 주세요.");
       return;
     }
-    if (
+    const phoneApplicantBad =
       st.applicantPhone.trim() !== "" &&
-      !isApplicantPhoneFormatValid(st.applicantPhone)
-    ) {
-      st.setPhoneError(
-        "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
-      );
-      alert("신청자 연락처 형식을 확인해 주세요.");
+      !isApplicantPhoneFormatValid(st.applicantPhone);
+    const phoneRpBad =
+      st.rpContact.trim() !== "" &&
+      !isApplicantPhoneFormatValid(st.rpContact);
+    if (phoneApplicantBad || phoneRpBad) {
+      if (phoneApplicantBad) {
+        st.setPhoneError(
+          "양식에 맞춰 입력해 주세요. (예: 010-1234-5678, 02-123-4567, +82-10-1234-5678)",
+        );
+      }
+      if (phoneRpBad) {
+        st.setRpContactError(true);
+      }
+      alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
       return;
     }
     if (
@@ -534,7 +546,11 @@ export function Step2Client() {
       st.setEmailError(
         "양식에 맞춰 입력해 주세요. (예: example@email.com)",
       );
-      alert("신청자 이메일 형식을 확인해 주세요.");
+      alert("정확한 이메일(또는 전화번호) 양식을 입력해주세요.");
+      return;
+    }
+    if (st.rpNameEnError || st.rpContactError) {
+      alert("입력 형식 오류가 있습니다. RP 항목을 확인해 주세요.");
       return;
     }
     if (
@@ -598,7 +614,10 @@ export function Step2Client() {
           st.ingredientFileMeta != null ? "1" : "",
         );
       }
-      fd.append(F.ingredientConfirmed, isIngredientConfirmed ? "1" : "");
+      fd.append(
+        F.ingredientConfirmed,
+        useApplyStore.getState().isIngredientConfirmed ? "1" : "",
+      );
       fd.append(F.rpNameEn, st.rpNameEn.trim());
       fd.append(F.rpContact, st.rpContact.trim());
       fd.append(F.agentName, st.agentName);
@@ -645,7 +664,7 @@ export function Step2Client() {
     } finally {
       st.setIsAddingProduct(false);
     }
-  }, [setCartSuccessModal, isIngredientConfirmed]);
+  }, [setCartSuccessModal]);
 
   return (
     <ApplyShell>
