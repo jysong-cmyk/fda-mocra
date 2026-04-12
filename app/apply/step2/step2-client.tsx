@@ -24,6 +24,7 @@ import {
 import {
   APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
   APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
+  APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
   persistApplyTutorialDone,
 } from "@/lib/apply/tutorial-constants";
 import { APPLY_SAVE_PRODUCT_FIELD } from "@/lib/apply/save-product-server-validation";
@@ -328,6 +329,7 @@ export function Step2Client() {
       });
       s.clearProductFieldKey("ingredientImage");
       s.setOcrProcessing(true);
+      let ocrSucceededForUx = false;
       try {
         const fd = new FormData();
         fd.append("image", file);
@@ -382,6 +384,7 @@ export function Step2Client() {
         st.setShowIngredientTextarea(true);
         setIsIngredientConfirmed(false);
         useApplyStore.getState().setIsIngredientConfirmed(false);
+        ocrSucceededForUx = true;
       } catch (err) {
         console.error("[OCR FATAL ERROR]:", err);
         // catch에서는 응답 파싱 없이 폴백만 (네트워크/런타임 예외)
@@ -392,6 +395,28 @@ export function Step2Client() {
         ingredientOcrInFlightRef.current = false;
         setIsOcrLoading(false);
         useApplyStore.getState().setOcrProcessing(false);
+        if (ocrSucceededForUx) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                  new CustomEvent(
+                    APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
+                  ),
+                );
+              }
+              alert(
+                "✅ OCR 인식 성공!\n\n아래 추출된 성분명을 확인해 주세요. 오타가 있다면 직접 텍스트 칸을 클릭해 수정한 뒤 [성분표 확인] 버튼을 눌러주세요.",
+              );
+              const ta =
+                ingredientTextareaRef.current ??
+                (document.getElementById(
+                  "apply-ingredient-text",
+                ) as HTMLTextAreaElement | null);
+              ta?.focus();
+            });
+          });
+        }
       }
     },
     [s],
@@ -1100,7 +1125,7 @@ export function Step2Client() {
                       }}
                       rows={11}
                       disabled={s.isAddingProduct}
-                      className={`w-full min-h-[280px] resize-y rounded-lg border bg-white px-3 py-3 text-base leading-relaxed outline-none disabled:bg-zinc-50 ${
+                      className={`w-full min-h-[280px] resize-y rounded-lg border bg-white px-3 py-3 text-xl font-medium leading-loose tracking-wide text-gray-900 outline-none disabled:bg-zinc-50 ${
                         s.productFieldError.ingredientText === true
                           ? invalidFieldClass
                           : ocrReviewState === "needs_review"

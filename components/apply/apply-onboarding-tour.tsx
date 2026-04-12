@@ -22,6 +22,7 @@ import {
   APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
   APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
   APPLY_TUTORIAL_CONTINUE_SESSION_KEY,
+  APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
   APPLY_TUTORIAL_RESUME_EVENT,
   dispatchTutorialRestarted,
   persistApplyTutorialDone,
@@ -486,6 +487,8 @@ const step2AiSearchButtonTourContent = (
 /** stepsPart2: 검색(2)·카테고리 확인(3) 인덱스 — 이벤트로 next 시 사용 */
 const STEP2_PART2_AI_SEARCH_INDEX = 2;
 const STEP2_PART2_CATEGORY_REVIEW_INDEX = 3;
+/** stepsPart2: 성분표 파일 업로드(7/9) — OCR 성공 시 다음 스텝(8/9)으로 진행 */
+const STEP2_PART2_INGREDIENT_UPLOAD_INDEX = 6;
 
 const step2CategoryReviewTourContent = (
   <Fragment>
@@ -751,6 +754,31 @@ export function ApplyOnboardingTour() {
         /* ignore */
       }
     };
+    const onIngredientOcrSuccessTourNext = () => {
+      if (!pathname.includes("/apply/step2") || !runRef.current) return;
+      const ctrl = joyrideControlsRef.current;
+      if (!ctrl) return;
+      try {
+        const info = ctrl.info();
+        if (
+          info.status !== STATUS.RUNNING ||
+          info.waiting ||
+          info.index !== STEP2_PART2_INGREDIENT_UPLOAD_INDEX
+        ) {
+          return;
+        }
+        const st = useApplyStore.getState();
+        if (
+          st.ingredientText.trim() === "" ||
+          st.isIngredientConfirmed
+        ) {
+          return;
+        }
+        ctrl.next();
+      } catch {
+        /* ignore */
+      }
+    };
     window.addEventListener(
       APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT,
       onAiSearchFinished,
@@ -758,6 +786,10 @@ export function ApplyOnboardingTour() {
     window.addEventListener(
       APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
       onCategoryConfirmTourNext,
+    );
+    window.addEventListener(
+      APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
+      onIngredientOcrSuccessTourNext,
     );
     return () => {
       window.removeEventListener(
@@ -767,6 +799,10 @@ export function ApplyOnboardingTour() {
       window.removeEventListener(
         APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT,
         onCategoryConfirmTourNext,
+      );
+      window.removeEventListener(
+        APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT,
+        onIngredientOcrSuccessTourNext,
       );
     };
   }, [pathname]);

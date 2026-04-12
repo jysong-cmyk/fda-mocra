@@ -12,6 +12,10 @@ export const APPLY_TUTORIAL_AI_SEARCH_FINISHED_EVENT =
 /** Step2: 카테고리 최종 확인 버튼 클릭 후 투어 다음 스텝(FEI)으로 진행 */
 export const APPLY_TUTORIAL_CATEGORY_CONFIRM_NEXT_EVENT =
   "aicra-apply-tutorial-category-confirm-next";
+
+/** Step2: 성분표 OCR 성공 후 투어가 업로드 스텝(7/9)이면 성분 검토 스텝(8/9)으로 진행 */
+export const APPLY_TUTORIAL_INGREDIENT_OCR_SUCCESS_EVENT =
+  "aicra-apply-tutorial-ingredient-ocr-success";
 export const APPLY_TUTORIAL_COMPLETED_EVENT = "aicra-tutorial-completed";
 export const APPLY_TUTORIAL_RESTARTED_EVENT = "aicra-tutorial-restarted";
 
