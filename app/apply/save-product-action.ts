@@ -191,7 +191,6 @@ export async function saveApplyProductAction(
         applicant_email: p.applicantEmail,
         recommender_name: p.recommenderName,
         label_image_url: labelImageUrlFinal,
-        payment_status: "pending",
       })
       .eq("id", editingId)
       .eq("session_id", sessionId);
@@ -287,7 +286,6 @@ export async function saveApplyProductAction(
       applicant_email: p.applicantEmail,
       recommender_name: p.recommenderName,
       label_image_url: labelUrlStr,
-      payment_status: "pending",
       session_id: sessionId,
     })
     .select("id")
