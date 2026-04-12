@@ -1098,9 +1098,9 @@ export function Step2Client() {
                           prev === "needs_review" ? "reviewed" : prev,
                         );
                       }}
-                      rows={5}
+                      rows={11}
                       disabled={s.isAddingProduct}
-                      className={`w-full resize-y rounded-lg border bg-white px-3 py-2.5 text-sm outline-none disabled:bg-zinc-50 ${
+                      className={`w-full min-h-[280px] resize-y rounded-lg border bg-white px-3 py-3 text-base leading-relaxed outline-none disabled:bg-zinc-50 ${
                         s.productFieldError.ingredientText === true
                           ? invalidFieldClass
                           : ocrReviewState === "needs_review"
