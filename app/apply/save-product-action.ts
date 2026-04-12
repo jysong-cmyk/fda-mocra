@@ -114,7 +114,7 @@ export async function saveApplyProductAction(
   if (!isInsert) {
     const { data: existing, error: exErr } = await admin
       .from("products")
-      .select("id, session_id, label_image_url")
+      .select("id, label_image_url")
       .eq("id", editingId)
       .maybeSingle();
 
@@ -123,15 +123,6 @@ export async function saveApplyProductAction(
     }
     if (existing == null) {
       return { ok: false, error: "수정 대상 제품을 찾을 수 없습니다." };
-    }
-
-    const rowSession =
-      existing.session_id == null ? "" : String(existing.session_id).trim();
-    if (rowSession !== sessionId) {
-      return {
-        ok: false,
-        error: "이 세션에서 등록한 제품만 수정할 수 있습니다.",
-      };
     }
 
     const existingLabels =
@@ -192,8 +183,7 @@ export async function saveApplyProductAction(
         recommender_name: p.recommenderName,
         label_image_url: labelImageUrlFinal,
       })
-      .eq("id", editingId)
-      .eq("session_id", sessionId);
+      .eq("id", editingId);
 
     if (updateErr != null) {
       if (newPaths.length > 0) {
@@ -286,7 +276,6 @@ export async function saveApplyProductAction(
       applicant_email: p.applicantEmail,
       recommender_name: p.recommenderName,
       label_image_url: labelUrlStr,
-      session_id: sessionId,
     })
     .select("id")
     .single();

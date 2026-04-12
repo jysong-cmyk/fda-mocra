@@ -2,7 +2,7 @@ import { deleteApplyCartLineAction } from "@/app/apply/label-storage-actions";
 import type { CartLine } from "@/lib/apply/types-and-constants";
 
 /**
- * 장바구니 줄 삭제: 서버에서 DB `session_id` 검증 후 스토리지·`products` 행 삭제.
+ * 장바구니 줄 삭제: 클라이언트 세션과 장바구니 줄이 맞는지 확인한 뒤 스토리지·`products` 행 삭제.
  * Storage 삭제 실패 시에도 서버 쪽에서 DB 삭제는 진행합니다.
  */
 export async function deleteCartLineWithStorageCleanup(

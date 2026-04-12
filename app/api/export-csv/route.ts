@@ -26,7 +26,6 @@ function rowsToCsv(
 const CSV_COLUMNS: { key: string; label: string }[] = [
   { key: "id", label: "제품 ID" },
   { key: "created_at", label: "등록일시" },
-  { key: "session_id", label: "세션 ID" },
   { key: "product_name_en", label: "영문 제품명" },
   { key: "fei_number", label: "FEI 번호" },
   { key: "category1", label: "카테고리(대)" },
@@ -90,7 +89,7 @@ export async function GET(request: Request) {
   const { data: products, error: qErr } = await admin
     .from("products")
     .select(
-      "id, created_at, session_id, product_name_en, fei_number, category1, category2, category3, ingredient_text, rp_name_en, rp_contact, agent_name, applicant_name, applicant_phone, applicant_email, recommender_name, label_image_url, paid_at, status",
+      "id, created_at, product_name_en, fei_number, category1, category2, category3, ingredient_text, rp_name_en, rp_contact, agent_name, applicant_name, applicant_phone, applicant_email, recommender_name, label_image_url, paid_at, status",
     )
     .order("created_at", { ascending: false });
 

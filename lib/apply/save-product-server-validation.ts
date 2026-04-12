@@ -4,8 +4,9 @@ import {
   RP_PRODUCT_NAME_REGEX,
 } from "@/lib/apply/types-and-constants";
 
-/** Step2 FormData 키 — 클라이언트·서버 동일하게 사용 */
+/** Step2 FormData 키 — 클라이언트·서버 동일하게 사용 (DB products 컬럼과 무관) */
 export const APPLY_SAVE_PRODUCT_FIELD = {
+  /** 브라우저 세션 — 스토리지 경로·검증용, Supabase insert/update 페이로드에 넣지 않음 */
   sessionId: "session_id",
   editingId: "editing_id",
   labels: "labels",

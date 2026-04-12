@@ -10,7 +10,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ApplyStore = {
-  /** 비회원 apply 브라우저 세션 — Supabase `products.session_id`·헤더와 연동 */
+  /** 비회원 apply 브라우저 세션 — 라벨 스토리지 경로·클라이언트 장바구니 일치용(DB products 컬럼 아님) */
   sessionId: string;
   isAgreed: boolean;
   rpNameEn: string;

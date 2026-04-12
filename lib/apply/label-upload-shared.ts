@@ -5,7 +5,7 @@ export function sanitizeLabelStorageFileName(name: string): string {
   return safe.length > 0 ? safe : "image";
 }
 
-/** apply 브라우저 session_id (UUID 문자열) — 경로 조작 방지 */
+/** apply 브라우저 세션 UUID — 라벨 스토리지 경로 접두어·조작 방지(DB 컬럼 아님) */
 export function isValidApplySessionId(raw: string): boolean {
   const s = raw.trim();
   if (s === "" || s.includes("/") || s.includes("..")) return false;

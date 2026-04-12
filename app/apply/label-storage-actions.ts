@@ -11,7 +11,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 export type DeleteApplyCartLineResult = { error: string | null };
 
 /**
- * 장바구니 줄 삭제: DB에서 session_id 검증 후, DB에 저장된 label 경로만 스토리지에서 제거하고 products 행을 삭제합니다.
+ * 장바구니 줄 삭제: 클라이언트 세션과 일치하는 스토리지 경로만 정리한 뒤 products 행을 삭제합니다.
  */
 export async function deleteApplyCartLineAction(input: {
   productId: string;
@@ -37,7 +37,7 @@ export async function deleteApplyCartLineAction(input: {
 
   const { data: row, error: fetchErr } = await admin
     .from("products")
-    .select("id, session_id, label_image_url")
+    .select("id, label_image_url")
     .eq("id", productId)
     .maybeSingle();
 
@@ -46,12 +46,6 @@ export async function deleteApplyCartLineAction(input: {
   }
   if (row == null) {
     return { error: "삭제할 제품을 찾을 수 없습니다." };
-  }
-
-  const rowSession =
-    row.session_id == null ? "" : String(row.session_id).trim();
-  if (rowSession !== sessionId) {
-    return { error: "이 세션에서 등록한 제품만 삭제할 수 있습니다." };
   }
 
   const paths = parseLabelObjectPathsFromField(
@@ -75,8 +69,7 @@ export async function deleteApplyCartLineAction(input: {
   const { error: delErr } = await admin
     .from("products")
     .delete()
-    .eq("id", productId)
-    .eq("session_id", sessionId);
+    .eq("id", productId);
 
   if (delErr != null) {
     return { error: delErr.message };

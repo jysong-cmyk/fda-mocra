@@ -60,7 +60,7 @@ export function isIngredientUploadClientAllowed(file: File): boolean {
 
 export type CartLine = {
   id: string;
-  /** 비회원 apply 세션 UUID — DB `session_id`·삭제 시 로컬과 일치 검증 */
+  /** 비회원 apply 브라우저 세션 UUID — 클라이언트·스토리지 경로용(DB products 컬럼 아님) */
   sessionId: string;
   productNameEn: string;
   category1: string;
