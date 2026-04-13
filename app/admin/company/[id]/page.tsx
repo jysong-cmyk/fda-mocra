@@ -36,6 +36,10 @@ type ProductRow = {
   applicant_phone?: string | null;
   applicant_email?: string | null;
   paid_at?: string | null;
+  submission_status?: string | null;
+  registration_number?: string | null;
+  submitted_at?: string | null;
+  completed_at?: string | null;
 };
 
 function formatDateYmd(iso: string | null | undefined): string {
@@ -62,6 +66,11 @@ function paymentLabel(row: ProductRow): string {
     return `결제 ${formatDateYmd(row.paid_at)}`;
   }
   return "결제 대기";
+}
+
+function submissionPipelineLabel(row: ProductRow): string {
+  const s = row.submission_status?.trim();
+  return s != null && s !== "" ? s : "READY";
 }
 
 function isAllowedAdminSession(s: Session | null): boolean {
@@ -237,19 +246,38 @@ export default function AdminCompanyDetailPage() {
         ) : (
           <div className="mt-8 overflow-hidden rounded-2xl border border-amber-200/30 bg-white shadow-lg shadow-emerald-950/5">
             <div className="border-b border-amber-200/40 bg-emerald-950/5 px-5 py-4">
-              <h2 className="text-base font-bold text-emerald-950">
-                SKU별 현황
-              </h2>
-              <p className="mt-1 text-xs text-zinc-600">
-                결제·진행·INCI·서류 상태를 한눈에 확인합니다.
-              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-emerald-950">
+                    SKU별 현황
+                  </h2>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    결제·진행·INCI·서류 상태를 한눈에 확인합니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    alert("준비 중입니다");
+                  }}
+                  className="shrink-0 cursor-pointer rounded-xl border-2 border-amber-400/70 bg-amber-50 px-3 py-2 text-xs font-bold text-emerald-950 shadow-sm ring-1 ring-amber-200/60 transition-colors hover:bg-amber-100/90 sm:text-sm"
+                >
+                  📥 RPA용 신규 제출 데이터 다운로드
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-left text-sm">
+              <table className="w-full min-w-[1120px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-amber-200/50 bg-emerald-950">
                     <th className="px-4 py-3.5 text-xs font-semibold text-amber-100/95">
                       제품명
+                    </th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-amber-100/95">
+                      진행 상태 (submission_status)
+                    </th>
+                    <th className="px-4 py-3.5 text-xs font-semibold text-amber-100/95">
+                      FDA 등록 번호
                     </th>
                     <th className="px-4 py-3.5 text-xs font-semibold text-amber-100/95">
                       접수일
@@ -279,6 +307,14 @@ export default function AdminCompanyDetailPage() {
                     >
                       <td className="px-4 py-4 font-medium text-emerald-950">
                         {row.product_name_en?.trim() || "—"}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="inline-flex rounded-full bg-sky-100/90 px-2 py-0.5 font-mono text-xs font-semibold text-sky-950 ring-1 ring-sky-300/60">
+                          {submissionPipelineLabel(row)}
+                        </span>
+                      </td>
+                      <td className="max-w-[10rem] break-all px-4 py-4 font-mono text-xs text-zinc-800">
+                        {row.registration_number?.trim() || "—"}
                       </td>
                       <td className="px-4 py-4 tabular-nums text-zinc-700">
                         {formatDateYmd(row.created_at ?? undefined)}

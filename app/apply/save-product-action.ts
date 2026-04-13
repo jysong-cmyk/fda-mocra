@@ -19,6 +19,11 @@ import type { CartLine } from "@/lib/apply/types-and-constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+/** DB 문자열 컬럼 저장 직전 공백 정리 */
+function t(value: string): string {
+  return value.trim();
+}
+
 export type SaveApplyProductResult =
   | { ok: true; mode: "add" | "edit"; cartLine: CartLine }
   | { ok: false; error: string };
@@ -168,20 +173,20 @@ export async function saveApplyProductAction(
     const { error: updateErr } = await admin
       .from("products")
       .update({
-        rp_name_en: p.rpNameEn,
-        rp_contact: p.rpContact,
-        product_name_en: p.productNameEn,
-        fei_number: p.feiNumber,
-        category1: p.category1,
-        category2: p.category2,
-        category3: p.category3,
-        ingredient_text: p.ingredientText,
-        agent_name: p.agentName,
-        applicant_name: p.applicantName,
-        applicant_phone: p.applicantPhone,
-        applicant_email: p.applicantEmail,
-        recommender_name: p.recommenderName,
-        label_image_url: labelImageUrlFinal,
+        rp_name_en: t(p.rpNameEn),
+        rp_contact: t(p.rpContact),
+        product_name_en: t(p.productNameEn),
+        fei_number: t(p.feiNumber),
+        category1: t(p.category1),
+        category2: t(p.category2),
+        category3: t(p.category3),
+        ingredient_text: t(p.ingredientText),
+        agent_name: t(p.agentName),
+        applicant_name: t(p.applicantName),
+        applicant_phone: t(p.applicantPhone),
+        applicant_email: t(p.applicantEmail),
+        recommender_name: t(p.recommenderName),
+        label_image_url: t(labelImageUrlFinal),
       })
       .eq("id", editingId);
 
@@ -220,7 +225,7 @@ export async function saveApplyProductAction(
       category3: p.category3,
       feiNumber: p.feiNumber,
       ingredientText: p.ingredientText,
-      labelImageUrl: labelImageUrlFinal,
+      labelImageUrl: t(labelImageUrlFinal),
       rpNameEn: p.rpNameEn,
       rpContact: p.rpContact,
       agentName: p.agentName,
@@ -257,25 +262,26 @@ export async function saveApplyProductAction(
   if ("error" in up) {
     return { ok: false, error: up.error };
   }
-  const labelUrlStr = up.urls.join(", ");
+  const labelUrlStr = t(up.urls.join(", "));
 
   const { data: inserted, error: insertErr } = await admin
     .from("products")
     .insert({
-      rp_name_en: p.rpNameEn,
-      rp_contact: p.rpContact,
-      product_name_en: p.productNameEn,
-      fei_number: p.feiNumber,
-      category1: p.category1,
-      category2: p.category2,
-      category3: p.category3,
-      ingredient_text: p.ingredientText,
-      agent_name: p.agentName,
-      applicant_name: p.applicantName,
-      applicant_phone: p.applicantPhone,
-      applicant_email: p.applicantEmail,
-      recommender_name: p.recommenderName,
+      rp_name_en: t(p.rpNameEn),
+      rp_contact: t(p.rpContact),
+      product_name_en: t(p.productNameEn),
+      fei_number: t(p.feiNumber),
+      category1: t(p.category1),
+      category2: t(p.category2),
+      category3: t(p.category3),
+      ingredient_text: t(p.ingredientText),
+      agent_name: t(p.agentName),
+      applicant_name: t(p.applicantName),
+      applicant_phone: t(p.applicantPhone),
+      applicant_email: t(p.applicantEmail),
+      recommender_name: t(p.recommenderName),
       label_image_url: labelUrlStr,
+      submission_status: "READY",
     })
     .select("id")
     .single();

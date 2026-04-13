@@ -36,6 +36,10 @@ type ProductRow = {
   recommender_name?: string | null;
   status?: string | null;
   paid_at?: string | null;
+  submission_status?: string | null;
+  registration_number?: string | null;
+  submitted_at?: string | null;
+  completed_at?: string | null;
 };
 
 function formatDateYmd(iso: string | null | undefined): string {
@@ -46,6 +50,11 @@ function formatDateYmd(iso: string | null | undefined): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function submissionPipelineLabel(row: ProductRow): string {
+  const s = row.submission_status?.trim();
+  return s != null && s !== "" ? s : "READY";
 }
 
 function isAllowedAdminSession(s: Session | null): boolean {
@@ -289,7 +298,7 @@ export default function AdminSalesRepDetailPage() {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] text-left text-sm">
+                <table className="w-full min-w-[1020px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-amber-200/50 bg-emerald-950">
                       <th className="px-4 py-3 text-xs font-semibold text-amber-100/95">
@@ -300,6 +309,12 @@ export default function AdminSalesRepDetailPage() {
                       </th>
                       <th className="px-4 py-3 text-xs font-semibold text-amber-100/95">
                         제품
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-amber-100/95">
+                        진행 상태 (submission_status)
+                      </th>
+                      <th className="px-4 py-3 text-xs font-semibold text-amber-100/95">
+                        FDA 등록 번호
                       </th>
                       <th className="px-4 py-3 text-xs font-semibold text-amber-200/95">
                         상태
@@ -320,6 +335,14 @@ export default function AdminSalesRepDetailPage() {
                         </td>
                         <td className="px-4 py-3.5 text-zinc-800">
                           {p.product_name_en?.trim() || "—"}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="inline-flex rounded-full bg-sky-100/90 px-2 py-0.5 font-mono text-xs font-semibold text-sky-950 ring-1 ring-sky-300/60">
+                            {submissionPipelineLabel(p)}
+                          </span>
+                        </td>
+                        <td className="max-w-[10rem] break-all px-4 py-3.5 font-mono text-xs text-zinc-800">
+                          {p.registration_number?.trim() || "—"}
                         </td>
                         <td className="px-4 py-3.5 text-xs">
                           {statusBadgeLabel(p)}

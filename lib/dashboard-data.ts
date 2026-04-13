@@ -1,5 +1,16 @@
 /** 관리자·영업 대시보드 공통 데이터 처리 */
 
+export const PRODUCT_SUBMISSION_STATUSES = [
+  "READY",
+  "PROCESSING",
+  "SUBMITTED",
+  "COMPLETED",
+  "ERROR",
+] as const;
+
+export type ProductSubmissionStatus =
+  (typeof PRODUCT_SUBMISSION_STATUSES)[number];
+
 export type ProductRowBase = {
   id?: string;
   created_at?: string | null;
@@ -11,6 +22,11 @@ export type ProductRowBase = {
   status?: string | null;
   /** 스키마에 없으면 undefined — 결제일 필터 시 접수일로 대체 */
   paid_at?: string | null;
+  /** FDA / RPA 파이프라인 제출 상태 */
+  submission_status?: string | null;
+  registration_number?: string | null;
+  submitted_at?: string | null;
+  completed_at?: string | null;
 };
 
 export type CompanyGroup = {

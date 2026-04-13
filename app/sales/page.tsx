@@ -101,10 +101,12 @@ export default function SalesPage() {
     }
 
     const meta = sess.user.user_metadata as Record<string, unknown> | undefined;
-    const rawName = typeof meta?.name === "string" ? meta.name : "";
+    const rawName =
+      typeof meta?.name === "string" ? meta.name.trim() : "";
     const metaName = rawName.replace(/\s+/g, "");
-    const rawPhone = typeof meta?.phone === "string" ? meta.phone : "";
-    const metaPhone = rawPhone.trim();
+    const rawPhone =
+      typeof meta?.phone === "string" ? meta.phone.trim() : "";
+    const metaPhone = rawPhone;
 
     if (metaName === "") {
       return;

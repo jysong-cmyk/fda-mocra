@@ -42,6 +42,10 @@ const CSV_COLUMNS: { key: string; label: string }[] = [
   { key: "label_image_url", label: "라벨 이미지 URL" },
   { key: "paid_at", label: "결제일시" },
   { key: "status", label: "진행 상태" },
+  { key: "submission_status", label: "RPA 제출 상태" },
+  { key: "registration_number", label: "FDA 등록 번호" },
+  { key: "submitted_at", label: "제출 시각" },
+  { key: "completed_at", label: "완료 시각" },
 ];
 
 export async function GET(request: Request) {
@@ -89,7 +93,7 @@ export async function GET(request: Request) {
   const { data: products, error: qErr } = await admin
     .from("products")
     .select(
-      "id, created_at, product_name_en, fei_number, category1, category2, category3, ingredient_text, rp_name_en, rp_contact, agent_name, applicant_name, applicant_phone, applicant_email, recommender_name, label_image_url, paid_at, status",
+      "id, created_at, product_name_en, fei_number, category1, category2, category3, ingredient_text, rp_name_en, rp_contact, agent_name, applicant_name, applicant_phone, applicant_email, recommender_name, label_image_url, paid_at, status, submission_status, registration_number, submitted_at, completed_at",
     )
     .order("created_at", { ascending: false });
 

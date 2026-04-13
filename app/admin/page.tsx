@@ -43,6 +43,10 @@ type ProductRow = {
   applicant_email?: string | null;
   label_image_url?: string | null;
   paid_at?: string | null;
+  submission_status?: string | null;
+  registration_number?: string | null;
+  submitted_at?: string | null;
+  completed_at?: string | null;
 };
 
 function isAllowedAdminSession(s: Session | null): boolean {
