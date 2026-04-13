@@ -246,25 +246,12 @@ export default function AdminCompanyDetailPage() {
         ) : (
           <div className="mt-8 overflow-hidden rounded-2xl border border-amber-200/30 bg-white shadow-lg shadow-emerald-950/5">
             <div className="border-b border-amber-200/40 bg-emerald-950/5 px-5 py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-base font-bold text-emerald-950">
-                    SKU별 현황
-                  </h2>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    결제·진행·INCI·서류 상태를 한눈에 확인합니다.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    alert("준비 중입니다");
-                  }}
-                  className="shrink-0 cursor-pointer rounded-xl border-2 border-amber-400/70 bg-amber-50 px-3 py-2 text-xs font-bold text-emerald-950 shadow-sm ring-1 ring-amber-200/60 transition-colors hover:bg-amber-100/90 sm:text-sm"
-                >
-                  📥 RPA용 신규 제출 데이터 다운로드
-                </button>
-              </div>
+              <h2 className="text-base font-bold text-emerald-950">
+                SKU별 현황
+              </h2>
+              <p className="mt-1 text-xs text-zinc-600">
+                결제·진행·INCI·서류 상태를 한눈에 확인합니다.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-left text-sm">

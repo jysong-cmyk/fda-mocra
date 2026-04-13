@@ -5,8 +5,13 @@ import { useCallback, useState } from "react";
 
 const kb = "break-keep text-balance" as const;
 
+type AdminCsvExportButtonProps = {
+  /** true면 상단 여백·구분선 없음(부모에서 RPA 버튼 등과 함께 묶을 때) */
+  compact?: boolean;
+};
+
 /** 관리자 화면 하단에만 배치. 기존 페이지 로직과 분리된 CSV 다운로드 UI. */
-export function AdminCsvExportButton() {
+export function AdminCsvExportButton({ compact = false }: AdminCsvExportButtonProps) {
   const [pending, setPending] = useState(false);
 
   const handleClick = useCallback(async () => {
@@ -66,8 +71,13 @@ export function AdminCsvExportButton() {
     }
   }, []);
 
+  const shell =
+    compact === true
+      ? ""
+      : `mt-10 border-t border-amber-200/40 pt-8 ${kb}`;
+
   return (
-    <div className={`mt-10 border-t border-amber-200/40 pt-8 ${kb}`}>
+    <div className={shell}>
       <button
         type="button"
         onClick={() => void handleClick()}

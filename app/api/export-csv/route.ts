@@ -1,16 +1,8 @@
 import { ADMIN_EMAIL } from "@/lib/admin-constants";
+import { escapeCsvCell } from "@/lib/csv-escape";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
-/** RFC 4180 스타일: 쉼표·줄바꿈·따옴표 포함 시 따옴표 이스케이프 */
-function escapeCsvCell(value: unknown): string {
-  const s = value == null ? "" : String(value);
-  if (/[",\r\n]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
 
 function rowsToCsv(
   headers: { key: string; label: string }[],

@@ -2,6 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { AdminCsvExportButton } from "@/components/admin-csv-export-button";
+import { AdminRpaExportButton } from "@/components/admin-rpa-export-button";
 import { AicraHeader } from "@/components/aicra-header";
 import { DashboardFilterToolbar } from "@/components/dashboard-filter-toolbar";
 import { DashboardTableSkeleton } from "@/components/dashboard-skeleton";
@@ -678,7 +679,18 @@ export default function AdminPage() {
             )}
           </>
         )}
-        <AdminCsvExportButton />
+        <div className={`mt-10 border-t border-amber-200/40 pt-8 ${kb}`}>
+          <AdminRpaExportButton />
+          <p className="mt-2 text-center text-xs text-zinc-500">
+            <span className="font-semibold text-zinc-700">READY</span> 상태 제품만
+            모아 <span className="font-semibold text-zinc-700">00_target_list.csv</span>
+            와 제품별 성분 CSV를 ZIP(
+            <span className="font-mono">rpa_export_YYYYMMDD.zip</span>)으로 받습니다.
+          </p>
+          <div className="mt-6">
+            <AdminCsvExportButton compact />
+          </div>
+        </div>
       </div>
     </div>
   );
